@@ -1,5 +1,5 @@
 {
-  "name": "turborepo",
+  "name": "cms",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -53,7 +53,7 @@
     "typescript": "5.8.3",
     "zod": "^3.24.4"
   },
-  "packageManager": "pnpm@10.11.0",
+  "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20"
   }
