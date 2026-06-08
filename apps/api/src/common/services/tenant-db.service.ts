@@ -2,11 +2,15 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 
+const SCHEMA_NAME_REGEX = /^[a-z][a-z0-9_]{0,62}$/;
+
 @Injectable()
 export class TenantDbService implements OnModuleInit, OnModuleDestroy {
-  private dataSource: DataSource;
+  private dataSource!: DataSource;
 
-  constructor(private config: ConfigService<any>) {
+  constructor(private config: ConfigService) {}
+
+  async onModuleInit() {
     this.dataSource = new DataSource({
       type: 'postgres',
       host: this.config.get('DB_HOST'),
@@ -17,21 +21,26 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
       synchronize: false,
       logging: false,
     });
-  }
-
-  async onModuleInit() {
-    if (!this.dataSource.isInitialized) {
-      await this.dataSource.initialize();
-    }
+    await this.dataSource.initialize();
   }
 
   async onModuleDestroy() {
-    if (this.dataSource.isInitialized) {
+    if (this.dataSource?.isInitialized) {
       await this.dataSource.destroy();
     }
   }
 
+  private validateSchemaName(name: string): void {
+    if (!SCHEMA_NAME_REGEX.test(name)) {
+      throw new Error(
+        `Invalid schema name: "${name}". Must match /^[a-z][a-z0-9_]{0,62}$/`,
+      );
+    }
+  }
+
   async createTenantSchema(schemaName: string): Promise<void> {
+    this.validateSchemaName(schemaName);
+
     await this.dataSource.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
 
     await this.dataSource.query(`
@@ -60,12 +69,13 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
     `);
 
     await this.dataSource.query(`
-      CREATE INDEX IF NOT EXISTS idx_"${schemaName}"_entry_ct_slug
+      CREATE INDEX IF NOT EXISTS idx_${schemaName}_entry_ct_slug
       ON "${schemaName}"."entry" ("content_type_slug")
     `);
   }
 
   async dropTenantSchema(schemaName: string): Promise<void> {
+    this.validateSchemaName(schemaName);
     await this.dataSource.query(
       `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`,
     );
@@ -75,9 +85,12 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
     schemaName: string,
     fn: (query: (sql: string, params?: unknown[]) => Promise<T>) => Promise<T>,
   ): Promise<T> {
-    await this.dataSource.query(`SET search_path TO "${schemaName}"`);
+    this.validateSchemaName(schemaName);
     return fn((sql: string, params?: unknown[]) =>
-      this.dataSource.query(sql, params),
+      this.dataSource.query(
+        sql.replaceAll('"content_type"', `"${schemaName}"."content_type"`),
+        params,
+      ),
     );
   }
 }
