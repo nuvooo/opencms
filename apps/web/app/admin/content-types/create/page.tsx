@@ -2,10 +2,14 @@
 
 import FieldOptionsDialog from '@/components/admin/field-options-dialog';
 import FieldTypePicker from '@/components/admin/field-type-picker';
-import { createContentType } from '@/server/content-type.server';
 import {
-  type ContentTypeField,
-  type ContentTypeFieldOptions,
+  createContentType,
+  getContentTypes,
+} from '@/server/content-type.server';
+import type {
+  ContentType,
+  ContentTypeField,
+  ContentTypeFieldOptions,
 } from '@/types/content-type.type';
 import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
@@ -40,10 +44,14 @@ const Page = () => {
   const [fields, setFields] = useState<ContentTypeField[]>([defaultField()]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [availableCts, setAvailableCts] = useState<ContentType[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem('admin-tenant-id');
     setTenantId(stored);
+    if (stored) {
+      getContentTypes(stored).then(setAvailableCts).catch(console.error);
+    }
   }, []);
 
   const handleNameChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -256,26 +264,37 @@ const Page = () => {
                               <Label className="text-xs">
                                 Related Content Type
                               </Label>
-                              <Input
+                              <select
+                                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
                                 value={field.options?.relatedType || ''}
                                 onChange={(
-                                  e: ChangeEvent<HTMLInputElement>,
+                                  e: ChangeEvent<HTMLSelectElement>,
                                 ) => {
                                   const opts = {
                                     ...field.options,
                                     relatedType: e.target.value || undefined,
+                                    displayField: undefined,
                                   };
                                   updateField(index, 'options', opts);
                                 }}
-                                placeholder="article"
-                              />
+                              >
+                                <option value="">Select...</option>
+                                {availableCts
+                                  .filter((ct) => ct.slug !== slug)
+                                  .map((ct) => (
+                                    <option key={ct.id} value={ct.slug}>
+                                      {ct.name} ({ct.slug})
+                                    </option>
+                                  ))}
+                              </select>
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Display Field</Label>
-                              <Input
+                              <select
+                                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
                                 value={field.options?.displayField || ''}
                                 onChange={(
-                                  e: ChangeEvent<HTMLInputElement>,
+                                  e: ChangeEvent<HTMLSelectElement>,
                                 ) => {
                                   const opts = {
                                     ...field.options,
@@ -283,8 +302,19 @@ const Page = () => {
                                   };
                                   updateField(index, 'options', opts);
                                 }}
-                                placeholder="title"
-                              />
+                              >
+                                <option value="">Select...</option>
+                                {availableCts
+                                  .find(
+                                    (ct) =>
+                                      ct.slug === field.options?.relatedType,
+                                  )
+                                  ?.fields.map((f) => (
+                                    <option key={f.name} value={f.name}>
+                                      {f.label || f.name}
+                                    </option>
+                                  ))}
+                              </select>
                             </div>
                           </div>
                         )}
