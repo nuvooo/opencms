@@ -35,6 +35,7 @@ export const FieldOptionsSchema = z.object({
   displayField: z.string().optional(),
   placeholder: z.string().optional(),
   helpText: z.string().optional(),
+  choices: z.array(z.string()).optional(),
 });
 
 export const ContentTypeFieldSchema = z.object({
