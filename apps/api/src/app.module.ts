@@ -9,14 +9,17 @@ import { ContentTypesModule } from '@/content-types/content-types.module';
 import { DatabaseModule } from '@/database';
 import { EntriesModule } from '@/entries/entries.module';
 import { FileModule } from '@/features/file/file.module';
+import { MediaModule } from '@/features/media/media.module';
+import { PluginModule } from '@/features/plugin/plugin.module';
 import { UsersModule } from '@/features/users/users.module';
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+import { RelationModule } from '@/relation/relation.module';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './features/auth/auth.module';
 import { HealthModule } from './features/health/health.module';
 import { MailModule } from './features/mail/mail.module';
@@ -52,6 +55,7 @@ import { TenantsModule } from './tenants/tenants.module';
       validate: validateEnv,
     }),
     TypeOrmModule.forFeature([Tenant]),
+    CommonModule,
     NodeMailerModule,
     LoggerModule,
     ThrottleModule,
@@ -63,16 +67,10 @@ import { TenantsModule } from './tenants/tenants.module';
     FileModule,
     ContentTypesModule,
     EntriesModule,
+    RelationModule,
     TenantsModule,
+    MediaModule,
+    PluginModule,
   ],
 })
-export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(TenantMiddleware)
-      .forRoutes(
-        { path: 'content-types', method: RequestMethod.ALL },
-        { path: 'entries', method: RequestMethod.ALL },
-      );
-  }
-}
+export class AppModule {}

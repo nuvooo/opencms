@@ -108,8 +108,12 @@ export class EntriesService {
   async remove(schemaName: string, id: string) {
     await this.findOne(schemaName, id);
 
-    await this.tenantDb.withTenantDb(schemaName, (query) =>
-      query(`DELETE FROM "entry" WHERE id = $1`, [id]),
-    );
+    await this.tenantDb.withTenantDb(schemaName, async (query) => {
+      await query(
+        `DELETE FROM "relation" WHERE entry_id = $1 OR related_entry_id = $2`,
+        [id, id],
+      );
+      await query(`DELETE FROM "entry" WHERE id = $3`, [id]);
+    });
   }
 }
