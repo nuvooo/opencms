@@ -280,10 +280,41 @@ const Page = () => {
     }
   };
 
+  const validate = (): string | null => {
+    if (!currentCt) return null;
+    for (const f of currentCt.fields) {
+      const val = fields[f.name];
+      if (f.options?.required && (!val || val === '')) {
+        return `"${f.label || f.name}" is required`;
+      }
+      if (f.options?.min && typeof val === 'number' && val < f.options.min) {
+        return `"${f.label || f.name}" must be at least ${f.options.min}`;
+      }
+      if (f.options?.max && typeof val === 'number' && val > f.options.max) {
+        return `"${f.label || f.name}" must be at most ${f.options.max}`;
+      }
+      if (f.options?.pattern && typeof val === 'string') {
+        try {
+          if (!new RegExp(f.options.pattern).test(val)) {
+            return `"${f.label || f.name}" does not match the required pattern`;
+          }
+        } catch {
+          /* invalid regex */
+        }
+      }
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tenantId) {
       setError('Please select a tenant from the sidebar.');
+      return;
+    }
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setError('');
