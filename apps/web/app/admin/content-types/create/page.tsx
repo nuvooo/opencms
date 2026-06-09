@@ -1,9 +1,9 @@
 'use client';
 
 import FieldOptionsDialog from '@/components/admin/field-options-dialog';
+import FieldTypePicker from '@/components/admin/field-type-picker';
 import { createContentType } from '@/server/content-type.server';
 import {
-  fieldTypes,
   type ContentTypeField,
   type ContentTypeFieldOptions,
 } from '@/types/content-type.type';
@@ -12,13 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { Input } from '@repo/shadcn/input';
 import { Label } from '@repo/shadcn/label';
 import { ArrowLeft, GripVertical, Plus, X } from '@repo/shadcn/lucide';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@repo/shadcn/select';
 import { toast } from '@repo/shadcn/sonner';
 import {
   Sortable,
@@ -213,23 +206,12 @@ const Page = () => {
                           </div>
                           <div className="space-y-1">
                             <Label className="text-xs">Type</Label>
-                            <Select
+                            <FieldTypePicker
                               value={field.type}
-                              onValueChange={(value: string) =>
+                              onChange={(value: string) =>
                                 updateField(index, 'type', value)
                               }
-                            >
-                              <SelectTrigger className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {fieldTypes.map((ft) => (
-                                  <SelectItem key={ft} value={ft}>
-                                    {ft}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            />
                           </div>
                           <div className="col-span-2 space-y-1">
                             <Label className="text-xs">Label</Label>
