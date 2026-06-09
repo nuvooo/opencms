@@ -242,64 +242,154 @@ const Page = () => {
                 <SortableContent className="space-y-2">
                   {fields.map((field, index) => (
                     <SortableItem key={String(index)} value={String(index)}>
-                      <div className="flex items-start gap-2 p-3 rounded-lg border bg-muted/30">
-                        <SortableItemHandle className="mt-2">
-                          <GripVertical className="size-4 text-muted-foreground cursor-grab" />
-                        </SortableItemHandle>
-                        <div className="flex-1 grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Name</Label>
-                            <Input
-                              value={field.name}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                updateField(index, 'name', e.target.value)
-                              }
-                              placeholder="field_name"
-                            />
+                      <div className="space-y-2 p-3 rounded-lg border bg-muted/30">
+                        <div className="flex items-start gap-2">
+                          <SortableItemHandle className="mt-2">
+                            <GripVertical className="size-4 text-muted-foreground cursor-grab" />
+                          </SortableItemHandle>
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Name</Label>
+                              <Input
+                                value={field.name}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                  updateField(index, 'name', e.target.value)
+                                }
+                                placeholder="field_name"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Type</Label>
+                              <FieldTypePicker
+                                value={field.type}
+                                onChange={(value: string) =>
+                                  updateField(index, 'type', value)
+                                }
+                              />
+                            </div>
+                            <div className="col-span-2 space-y-1">
+                              <Label className="text-xs">Label</Label>
+                              <Input
+                                value={field.label || ''}
+                                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                                  updateField(
+                                    index,
+                                    'label',
+                                    e.target.value || undefined,
+                                  )
+                                }
+                                placeholder="Field Label"
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Type</Label>
-                            <FieldTypePicker
-                              value={field.type}
-                              onChange={(value: string) =>
-                                updateField(index, 'type', value)
+                          <div className="flex items-center gap-1 pt-5">
+                            <FieldOptionsDialog
+                              options={field.options}
+                              fieldType={field.type}
+                              allFieldNames={fieldNames}
+                              onChange={(opts: ContentTypeFieldOptions) =>
+                                updateField(index, 'options', opts)
                               }
                             />
-                          </div>
-                          <div className="col-span-2 space-y-1">
-                            <Label className="text-xs">Label</Label>
-                            <Input
-                              value={field.label || ''}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                                updateField(
-                                  index,
-                                  'label',
-                                  e.target.value || undefined,
-                                )
-                              }
-                              placeholder="Field Label"
-                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-7"
+                              onClick={() => removeField(index)}
+                            >
+                              <X className="size-3.5" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 pt-5">
-                          <FieldOptionsDialog
-                            options={field.options}
-                            fieldType={field.type}
-                            allFieldNames={fieldNames}
-                            onChange={(opts: ContentTypeFieldOptions) =>
-                              updateField(index, 'options', opts)
-                            }
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            onClick={() => removeField(index)}
-                          >
-                            <X className="size-3.5" />
-                          </Button>
-                        </div>
+
+                        {(field.type === 'm2o' || field.type === 'm2m') && (
+                          <div className="grid grid-cols-2 gap-2 pl-8">
+                            <div className="space-y-1">
+                              <Label className="text-xs">
+                                Related Content Type
+                              </Label>
+                              <Input
+                                value={field.options?.relatedType || ''}
+                                onChange={(
+                                  e: ChangeEvent<HTMLInputElement>,
+                                ) => {
+                                  const opts = {
+                                    ...field.options,
+                                    relatedType: e.target.value || undefined,
+                                  };
+                                  updateField(index, 'options', opts);
+                                }}
+                                placeholder="article"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Display Field</Label>
+                              <Input
+                                value={field.options?.displayField || ''}
+                                onChange={(
+                                  e: ChangeEvent<HTMLInputElement>,
+                                ) => {
+                                  const opts = {
+                                    ...field.options,
+                                    displayField: e.target.value || undefined,
+                                  };
+                                  updateField(index, 'options', opts);
+                                }}
+                                placeholder="title"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {field.type === 'slug' && (
+                          <div className="pl-8 space-y-1">
+                            <Label className="text-xs">Generate From</Label>
+                            <select
+                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                              value={field.options?.slugFrom || ''}
+                              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                                const opts = {
+                                  ...field.options,
+                                  slugFrom: e.target.value || undefined,
+                                };
+                                updateField(index, 'options', opts);
+                              }}
+                            >
+                              <option value="">None</option>
+                              {fieldNames.map((name) => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {field.type === 'select' && (
+                          <div className="pl-8 space-y-1">
+                            <Label className="text-xs">
+                              Options (one per line)
+                            </Label>
+                            <textarea
+                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                              rows={3}
+                              value={(field.options?.choices || []).join('\n')}
+                              onChange={(
+                                e: ChangeEvent<HTMLTextAreaElement>,
+                              ) => {
+                                const opts = {
+                                  ...field.options,
+                                  choices: e.target.value
+                                    .split('\n')
+                                    .filter(Boolean),
+                                };
+                                updateField(index, 'options', opts);
+                              }}
+                              placeholder="option1&#10;option2&#10;option3"
+                            />
+                          </div>
+                        )}
                       </div>
                     </SortableItem>
                   ))}
