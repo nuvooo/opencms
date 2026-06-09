@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 
@@ -7,26 +12,65 @@ const SCHEMA_NAME_REGEX = /^[a-z][a-z0-9_]{0,62}$/;
 @Injectable()
 export class TenantDbService implements OnModuleInit, OnModuleDestroy {
   private dataSource!: DataSource;
+  private readonly logger = new Logger(TenantDbService.name);
 
   constructor(private config: ConfigService) {}
 
   async onModuleInit() {
-    this.dataSource = new DataSource({
-      type: 'postgres',
-      host: this.config.get('DB_HOST'),
-      port: Number(this.config.get('DB_PORT')),
-      username: this.config.get('DB_USERNAME'),
-      password: this.config.get('DB_PASSWORD'),
-      database: this.config.get('DB_NAME'),
-      synchronize: false,
-      logging: false,
-    });
-    await this.dataSource.initialize();
+    try {
+      this.dataSource = new DataSource({
+        type: 'postgres',
+        host: this.config.get('DB_HOST'),
+        port: Number(this.config.get('DB_PORT')),
+        username: this.config.get('DB_USERNAME'),
+        password: this.config.get('DB_PASSWORD'),
+        database: this.config.get('DB_NAME'),
+        synchronize: false,
+        logging: false,
+      });
+      this.logger.log('Initializing TenantDb DataSource...');
+      await this.dataSource.initialize();
+      this.logger.log('TenantDb DataSource initialized');
+
+      await this.migrateExistingTenants();
+    } catch (error) {
+      this.logger.error(
+        `Failed to initialize TenantDb DataSource: ${(error as Error).message}`,
+      );
+      throw error;
+    }
   }
 
   async onModuleDestroy() {
     if (this.dataSource?.isInitialized) {
       await this.dataSource.destroy();
+    }
+  }
+
+  private async migrateExistingTenants(): Promise<void> {
+    try {
+      const tenants: { schema_name: string }[] = await this.dataSource.query(
+        `SELECT schema_name FROM public.tenant`,
+      );
+      for (const t of tenants) {
+        await this.dataSource.query(`
+          CREATE TABLE IF NOT EXISTS "${t.schema_name}"."relation" (
+            id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+            entry_id uuid NOT NULL REFERENCES "${t.schema_name}"."entry"("id") ON DELETE CASCADE,
+            field_name varchar(255) NOT NULL,
+            related_entry_id uuid NOT NULL REFERENCES "${t.schema_name}"."entry"("id") ON DELETE CASCADE,
+            sort_order integer DEFAULT 0,
+            UNIQUE(entry_id, field_name, related_entry_id)
+          )
+        `);
+      }
+      if (tenants.length > 0) {
+        this.logger.log(
+          `Migrated ${tenants.length} existing tenant(s) with relation table`,
+        );
+      }
+    } catch {
+      this.logger.warn('No tenants table found yet — skipping migration');
     }
   }
 
@@ -72,6 +116,17 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_${schemaName}_entry_ct_slug
       ON "${schemaName}"."entry" ("content_type_slug")
     `);
+
+    await this.dataSource.query(`
+      CREATE TABLE IF NOT EXISTS "${schemaName}"."relation" (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        entry_id uuid NOT NULL REFERENCES "${schemaName}"."entry"("id") ON DELETE CASCADE,
+        field_name varchar(255) NOT NULL,
+        related_entry_id uuid NOT NULL REFERENCES "${schemaName}"."entry"("id") ON DELETE CASCADE,
+        sort_order integer DEFAULT 0,
+        UNIQUE(entry_id, field_name, related_entry_id)
+      )
+    `);
   }
 
   async dropTenantSchema(schemaName: string): Promise<void> {
@@ -86,9 +141,15 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
     fn: (query: (sql: string, params?: unknown[]) => Promise<T>) => Promise<T>,
   ): Promise<T> {
     this.validateSchemaName(schemaName);
+    if (!this.dataSource?.isInitialized) {
+      throw new Error('TenantDb DataSource not initialized');
+    }
     return fn((sql: string, params?: unknown[]) =>
       this.dataSource.query(
-        sql.replaceAll('"content_type"', `"${schemaName}"."content_type"`),
+        sql
+          .replaceAll('"content_type"', `"${schemaName}"."content_type"`)
+          .replaceAll('"entry"', `"${schemaName}"."entry"`)
+          .replaceAll('"relation"', `"${schemaName}"."relation"`),
         params,
       ),
     );
