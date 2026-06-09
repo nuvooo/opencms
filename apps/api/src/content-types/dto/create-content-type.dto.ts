@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
-  IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsObject,
@@ -12,36 +11,37 @@ import {
   ValidateNested,
 } from 'class-validator';
 
+const FIELD_TYPES = [
+  'text',
+  'textarea',
+  'rich_text',
+  'number',
+  'boolean',
+  'date',
+  'image',
+  'select',
+  'repeater',
+  'slug',
+  'color',
+  'json',
+  'datetime',
+  'time',
+  'email',
+  'url',
+  'phone',
+  'm2o',
+  'o2m',
+  'm2m',
+] as const;
+
 export class ContentTypeField {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({
-    enum: [
-      'text',
-      'textarea',
-      'rich_text',
-      'number',
-      'boolean',
-      'date',
-      'image',
-      'select',
-      'repeater',
-    ],
-  })
-  @IsEnum([
-    'text',
-    'textarea',
-    'rich_text',
-    'number',
-    'boolean',
-    'date',
-    'image',
-    'select',
-    'repeater',
-  ])
+  @ApiProperty({ enum: FIELD_TYPES })
+  @IsEnum(FIELD_TYPES)
   type: string;
 
   @ApiPropertyOptional()
@@ -49,15 +49,10 @@ export class ContentTypeField {
   @IsString()
   label?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  required?: boolean;
-
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Object })
   @IsOptional()
   @IsObject()
-  options?: any;
+  options?: Record<string, unknown>;
 }
 
 export class CreateContentTypeDto {
