@@ -2,8 +2,10 @@
 
 import EntryPreview from '@/components/admin/entry-preview';
 import ImagePicker from '@/components/admin/image-picker';
+import RelationPicker from '@/components/admin/relation-picker';
 import { getContentTypes } from '@/server/content-type.server';
 import { getEntry, updateEntry } from '@/server/entry.server';
+import { setRelations } from '@/server/relation.server';
 import { ContentType, ContentTypeField } from '@/types/content-type.type';
 import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
@@ -233,6 +235,38 @@ const Page = () => {
             }
           />
         );
+      case 'm2o':
+        return tenantId ? (
+          <RelationPicker
+            tenantId={tenantId}
+            relatedType={field.options?.relatedType || ''}
+            displayField={field.options?.displayField}
+            value={value as string}
+            onChange={(v) => handleFieldChange(field.name, v)}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Select a tenant first</p>
+        );
+      case 'm2m':
+        return tenantId ? (
+          <RelationPicker
+            tenantId={tenantId}
+            relatedType={field.options?.relatedType || ''}
+            displayField={field.options?.displayField}
+            value={(value as string[]) || []}
+            multiple
+            onChange={(v) => handleFieldChange(field.name, v)}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Select a tenant first</p>
+        );
+      case 'o2m':
+        return (
+          <p className="text-sm text-muted-foreground italic">
+            This field displays entries that reference this entry. Manage
+            relationships from the related entry&apos;s m2o field.
+          </p>
+        );
       default:
         return (
           <Input
@@ -262,6 +296,21 @@ const Page = () => {
         locale,
         status,
       });
+
+      const relFields = currentCt?.fields.filter(
+        (f) => f.type === 'm2o' || f.type === 'm2m',
+      );
+      for (const rf of relFields || []) {
+        const val = fields[rf.name];
+        const ids =
+          rf.type === 'm2o'
+            ? val
+              ? [val as string]
+              : []
+            : (val as string[]) || [];
+        await setRelations(tenantId, id, rf.name, ids);
+      }
+
       toast.success('Entry updated successfully');
       router.push('/admin/entries');
       router.refresh();
