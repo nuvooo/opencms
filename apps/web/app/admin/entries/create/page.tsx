@@ -2,9 +2,11 @@
 
 import EntryPreview from '@/components/admin/entry-preview';
 import ImagePicker from '@/components/admin/image-picker';
+import LocaleTabs from '@/components/admin/locale-tabs';
 import RelationPicker from '@/components/admin/relation-picker';
 import { getContentTypes } from '@/server/content-type.server';
 import { createEntry } from '@/server/entry.server';
+import { getLocales } from '@/server/locale.server';
 import { setRelations } from '@/server/relation.server';
 import { ContentType, ContentTypeField } from '@/types/content-type.type';
 import { Button } from '@repo/shadcn/button';
@@ -21,6 +23,7 @@ import {
   SelectValue,
 } from '@repo/shadcn/select';
 import { toast } from '@repo/shadcn/sonner';
+import { Switch } from '@repo/shadcn/switch';
 import { Textarea } from '@repo/shadcn/textarea';
 import { RichTextEditor } from '@repo/shadcn/tiptap/rich-text-editor';
 import Link from 'next/link';
@@ -36,6 +39,9 @@ const Page = () => {
     searchParams.get('content_type_slug') || '',
   );
   const [fields, setFields] = useState<Record<string, unknown>>({});
+  const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>(
+    {},
+  );
   const [locale, setLocale] = useState('en');
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>(
     'draft',
@@ -48,11 +54,24 @@ const Page = () => {
     const stored = localStorage.getItem('admin-tenant-id');
     setTenantId(stored);
     if (stored) {
-      getContentTypes(stored).then(setContentTypes).catch(console.error);
+      Promise.all([getContentTypes(stored), getLocales(stored)])
+        .then(([cts, locs]) => {
+          setContentTypes(cts);
+          const defaultLocale = locs.find((l) => l.is_default)?.code || 'en';
+          setLocale(defaultLocale);
+        })
+        .catch(console.error);
     }
   }, []);
 
   const currentCt = contentTypes.find((ct) => ct.slug === selectedCt);
+
+  const isFieldEnabled = (name: string) => enabledFields[name] !== false;
+  const toggleField = (name: string) =>
+    setEnabledFields((p) => ({
+      ...p,
+      [name]: p[name] === false ? true : false,
+    }));
 
   const handleFieldChange = (fieldName: string, value: unknown) => {
     setFields((prev) => ({ ...prev, [fieldName]: value }));
@@ -269,6 +288,7 @@ const Page = () => {
   const validate = (): string | null => {
     if (!currentCt) return null;
     for (const f of currentCt.fields) {
+      if (enabledFields[f.name] === false) continue;
       const val = fields[f.name];
       if (f.options?.required && (!val || val === '')) {
         return `"${f.label || f.name}" is required`;
@@ -311,17 +331,27 @@ const Page = () => {
     setLoading(true);
 
     try {
+      const localeGroupId = crypto.randomUUID();
+
+      const activeFields = Object.fromEntries(
+        currentCt!.fields
+          .filter((f) => enabledFields[f.name] !== false)
+          .map((f) => [f.name, fields[f.name] ?? null]),
+      );
+
       const entry = await createEntry(tenantId, {
         content_type_slug: selectedCt,
-        fields,
+        fields: activeFields,
         locale,
         status,
+        locale_group_id: localeGroupId,
       });
 
       const relFields = currentCt?.fields.filter(
         (f) => f.type === 'm2o' || f.type === 'm2m',
       );
       for (const rf of relFields || []) {
+        if (enabledFields[rf.name] === false) continue;
         const val = fields[rf.name];
         const ids =
           rf.type === 'm2o'
@@ -420,34 +450,42 @@ const Page = () => {
               )}
             </div>
 
+            {currentCt && tenantId && (
+              <div className="pt-2">
+                <Label className="text-base font-medium mb-2 block">
+                  Language
+                </Label>
+                <LocaleTabs
+                  tenantId={tenantId}
+                  value={locale}
+                  onChange={setLocale}
+                />
+              </div>
+            )}
+
             {currentCt && (
               <div className="space-y-4 pt-2">
                 <Label className="text-base font-medium">Fields</Label>
                 {currentCt.fields.map((field) => (
                   <div key={field.name} className="space-y-2">
-                    <Label>
-                      {field.label || field.name}
-                      {field.options?.required && (
-                        <span className="text-destructive ml-1">*</span>
-                      )}
-                    </Label>
-                    {renderFieldInput(field)}
+                    <div className="flex items-center justify-between">
+                      <Label>
+                        {field.label || field.name}
+                        {field.options?.required &&
+                          isFieldEnabled(field.name) && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                      </Label>
+                      <Switch
+                        checked={isFieldEnabled(field.name)}
+                        onCheckedChange={() => toggleField(field.name)}
+                      />
+                    </div>
+                    {isFieldEnabled(field.name) && renderFieldInput(field)}
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="locale">Locale</Label>
-              <Input
-                id="locale"
-                value={locale}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setLocale(e.target.value)
-                }
-                placeholder="en"
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
