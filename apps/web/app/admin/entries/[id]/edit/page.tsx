@@ -4,15 +4,24 @@ import EntryPreview from '@/components/admin/entry-preview';
 import ImagePicker from '@/components/admin/image-picker';
 import RelationPicker from '@/components/admin/relation-picker';
 import { getContentTypes } from '@/server/content-type.server';
-import { getEntry, updateEntry } from '@/server/entry.server';
+import {
+  createEntry,
+  getEntries,
+  getEntry,
+  updateEntry,
+} from '@/server/entry.server';
+import { getLocales } from '@/server/locale.server';
 import { setRelations } from '@/server/relation.server';
 import { ContentType, ContentTypeField } from '@/types/content-type.type';
+import type { Entry } from '@/types/entry.type';
+import type { Locale } from '@/types/locale.type';
 import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { Checkbox } from '@repo/shadcn/checkbox';
 import { Input } from '@repo/shadcn/input';
 import { Label } from '@repo/shadcn/label';
-import { ArrowLeft, Eye } from '@repo/shadcn/lucide';
+import { cn } from '@repo/shadcn/lib/utils';
+import { ArrowLeft, Eye, Plus } from '@repo/shadcn/lucide';
 import {
   Select,
   SelectContent,
@@ -21,6 +30,7 @@ import {
   SelectValue,
 } from '@repo/shadcn/select';
 import { toast } from '@repo/shadcn/sonner';
+import { Switch } from '@repo/shadcn/switch';
 import { Textarea } from '@repo/shadcn/textarea';
 import { RichTextEditor } from '@repo/shadcn/tiptap/rich-text-editor';
 import Link from 'next/link';
@@ -34,8 +44,14 @@ const Page = () => {
 
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
+  const [locales, setLocales] = useState<Locale[]>([]);
+  const [entry, setEntry] = useState<Entry | null>(null);
+  const [groupEntries, setGroupEntries] = useState<Entry[]>([]);
   const [selectedCt, setSelectedCt] = useState<string>('');
   const [fields, setFields] = useState<Record<string, unknown>>({});
+  const [enabledFields, setEnabledFields] = useState<Record<string, boolean>>(
+    {},
+  );
   const [locale, setLocale] = useState('en');
   const [status, setStatus] = useState<'draft' | 'published' | 'archived'>(
     'draft',
@@ -49,13 +65,41 @@ const Page = () => {
     const stored = localStorage.getItem('admin-tenant-id');
     setTenantId(stored);
     if (stored) {
-      Promise.all([getEntry(stored, id), getContentTypes(stored)])
-        .then(([entry, ctData]) => {
+      getEntry(stored, id)
+        .then(async (entryData) => {
+          setEntry(entryData);
+          setSelectedCt(entryData.content_type_slug);
+          setFields(entryData.fields as Record<string, unknown>);
+          setLocale(entryData.locale);
+          setStatus(entryData.status as 'draft' | 'published' | 'archived');
+
+          const [ctData, locs] = await Promise.all([
+            getContentTypes(stored),
+            getLocales(stored),
+          ]);
           setContentTypes(ctData);
-          setSelectedCt(entry.content_type_slug);
-          setFields(entry.fields as Record<string, unknown>);
-          setLocale(entry.locale);
-          setStatus(entry.status as 'draft' | 'published' | 'archived');
+          setLocales(locs);
+
+          const loadedCt = ctData.find(
+            (ct) => ct.slug === entryData.content_type_slug,
+          );
+          if (loadedCt) {
+            const init: Record<string, boolean> = {};
+            for (const f of loadedCt.fields) {
+              init[f.name] = Object.prototype.hasOwnProperty.call(
+                entryData.fields ?? {},
+                f.name,
+              );
+            }
+            setEnabledFields(init);
+          }
+
+          if (entryData.locale_group_id) {
+            const group = await getEntries(stored, {
+              locale_group_id: entryData.locale_group_id,
+            });
+            setGroupEntries(group);
+          }
         })
         .catch((err) =>
           setError(err instanceof Error ? err.message : 'Failed to load entry'),
@@ -67,6 +111,37 @@ const Page = () => {
   }, [id]);
 
   const currentCt = contentTypes.find((ct) => ct.slug === selectedCt);
+
+  const isFieldEnabled = (name: string) => enabledFields[name] !== false;
+  const toggleField = (name: string) =>
+    setEnabledFields((p) => ({
+      ...p,
+      [name]: p[name] === false ? true : false,
+    }));
+
+  const localeEntryMap = new Map<string, Entry>();
+  for (const ge of groupEntries) {
+    localeEntryMap.set(ge.locale, ge);
+  }
+
+  const handleAddTranslation = async (localeCode: string) => {
+    if (!tenantId || !entry) return;
+    try {
+      const newEntry = await createEntry(tenantId, {
+        content_type_slug: entry.content_type_slug,
+        fields: {},
+        locale: localeCode,
+        status: 'draft',
+        locale_group_id: entry.locale_group_id,
+      });
+      toast.success(`Added ${localeCode} translation`);
+      router.push(`/admin/entries/${newEntry.id}/edit`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to add translation',
+      );
+    }
+  };
 
   const handleFieldChange = (fieldName: string, value: unknown) => {
     setFields((prev) => ({ ...prev, [fieldName]: value }));
@@ -283,6 +358,7 @@ const Page = () => {
   const validate = (): string | null => {
     if (!currentCt) return null;
     for (const f of currentCt.fields) {
+      if (enabledFields[f.name] === false) continue;
       const val = fields[f.name];
       if (f.options?.required && (!val || val === '')) {
         return `"${f.label || f.name}" is required`;
@@ -321,9 +397,15 @@ const Page = () => {
     setLoading(true);
 
     try {
+      const activeFields = Object.fromEntries(
+        currentCt!.fields
+          .filter((f) => enabledFields[f.name] !== false)
+          .map((f) => [f.name, fields[f.name] ?? null]),
+      );
+
       await updateEntry(tenantId, id, {
         content_type_slug: selectedCt,
-        fields,
+        fields: activeFields,
         locale,
         status,
       });
@@ -332,6 +414,7 @@ const Page = () => {
         (f) => f.type === 'm2o' || f.type === 'm2m',
       );
       for (const rf of relFields || []) {
+        if (enabledFields[rf.name] === false) continue;
         const val = fields[rf.name];
         const ids =
           rf.type === 'm2o'
@@ -413,49 +496,86 @@ const Page = () => {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="content-type">Content Type</Label>
-              <Select value={selectedCt} onValueChange={setSelectedCt}>
-                <SelectTrigger id="content-type">
-                  <SelectValue placeholder="Select content type..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contentTypes.map((ct) => (
-                    <SelectItem key={ct.id} value={ct.slug}>
-                      {ct.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Content Type</Label>
+              <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                <span className="font-medium">
+                  {currentCt?.name || selectedCt}
+                </span>
+                <span className="text-muted-foreground">({selectedCt})</span>
+              </div>
             </div>
+
+            {tenantId && (
+              <div className="pt-2">
+                <Label className="text-base font-medium mb-2 block">
+                  Language
+                </Label>
+                <div className="flex flex-wrap gap-1 border-b mb-4">
+                  {locales.map((l) => {
+                    const version = localeEntryMap.get(l.code);
+                    const isActive = l.code === locale;
+                    return (
+                      <div key={l.code} className="flex items-center">
+                        {version ? (
+                          <Link
+                            href={`/admin/entries/${version.id}/edit`}
+                            className={cn(
+                              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+                              isActive
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {l.name}
+                            {l.is_default && (
+                              <span className="ml-1.5 text-xs text-muted-foreground">
+                                (default)
+                              </span>
+                            )}
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleAddTranslation(l.code)}
+                            className={cn(
+                              'px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+                              'border-dashed border-transparent text-muted-foreground/50 hover:text-foreground hover:border-muted-foreground/30',
+                            )}
+                          >
+                            <Plus className="size-3 inline mr-1" />
+                            {l.name}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {currentCt && (
               <div className="space-y-4 pt-2">
                 <Label className="text-base font-medium">Fields</Label>
                 {currentCt.fields.map((field) => (
                   <div key={field.name} className="space-y-2">
-                    <Label>
-                      {field.label || field.name}
-                      {field.options?.required && (
-                        <span className="text-destructive ml-1">*</span>
-                      )}
-                    </Label>
-                    {renderFieldInput(field)}
+                    <div className="flex items-center justify-between">
+                      <Label>
+                        {field.label || field.name}
+                        {field.options?.required &&
+                          isFieldEnabled(field.name) && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                      </Label>
+                      <Switch
+                        checked={isFieldEnabled(field.name)}
+                        onCheckedChange={() => toggleField(field.name)}
+                      />
+                    </div>
+                    {isFieldEnabled(field.name) && renderFieldInput(field)}
                   </div>
                 ))}
               </div>
             )}
-
-            <div className="space-y-2">
-              <Label htmlFor="locale">Locale</Label>
-              <Input
-                id="locale"
-                value={locale}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setLocale(e.target.value)
-                }
-                placeholder="en"
-              />
-            </div>
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
