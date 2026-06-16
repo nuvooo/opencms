@@ -170,6 +170,17 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
     `);
   }
 
+  async copyContentTypes(fromSchema: string, toSchema: string): Promise<void> {
+    this.validateSchemaName(fromSchema);
+    this.validateSchemaName(toSchema);
+    await this.dataSource.query(`
+      INSERT INTO "${toSchema}"."content_type" (id, name, slug, description, fields, created_at, updated_at)
+      SELECT gen_random_uuid(), name, slug, description, fields, now(), now()
+      FROM "${fromSchema}"."content_type"
+      ON CONFLICT (slug) DO NOTHING
+    `);
+  }
+
   async dropTenantSchema(schemaName: string): Promise<void> {
     this.validateSchemaName(schemaName);
     await this.dataSource.query(
