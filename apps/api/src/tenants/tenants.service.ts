@@ -22,6 +22,8 @@ export class TenantsService {
     const existing = await this.tenantRepo.findOneBy({ slug: dto.slug });
     if (existing) throw new ConflictException('Slug already exists');
 
+    const template = await this.tenantRepo.findOneBy({ isTemplate: true });
+
     if (dto.isTemplate === true) {
       await this.tenantRepo.update({ isTemplate: true }, { isTemplate: false });
     }
@@ -29,7 +31,6 @@ export class TenantsService {
     const schemaName = `tenant_${dto.slug.replace(/[^a-z0-9]/g, '_')}`;
     await this.tenantDb.createTenantSchema(schemaName);
 
-    const template = await this.tenantRepo.findOneBy({ isTemplate: true });
     if (template) {
       await this.tenantDb.copyContentTypes(template.schemaName, schemaName);
     }
