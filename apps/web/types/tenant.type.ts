@@ -9,7 +9,7 @@ export const TenantSchema = z.object({
   schemaName: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  isTemplate: z.boolean().optional(),
+  isTemplate: z.boolean().optional().default(false),
 });
 
 export type Tenant = z.infer<typeof TenantSchema>;

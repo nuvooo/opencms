@@ -65,7 +65,7 @@ export const updateTenant = async (
 export const setTemplateTenant = async (id: string): Promise<Tenant> => {
   const session = await auth();
   const [error, data] = await safeFetch(GetTenantSchema, `/tenants/${id}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session?.user?.tokens.access_token}`,

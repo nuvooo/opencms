@@ -429,13 +429,22 @@ const Page = () => {
                     variant="ghost"
                     size="sm"
                     className="ml-auto h-6 text-xs"
-                    onClick={() => setSelectedCt('')}
+                    onClick={() => {
+                      setSelectedCt('');
+                      setEnabledFields({});
+                    }}
                   >
                     Change
                   </Button>
                 </div>
               ) : (
-                <Select value={selectedCt} onValueChange={setSelectedCt}>
+                <Select
+                  value={selectedCt}
+                  onValueChange={(v) => {
+                    setSelectedCt(v);
+                    setEnabledFields({});
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select content type..." />
                   </SelectTrigger>
