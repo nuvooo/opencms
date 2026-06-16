@@ -22,27 +22,32 @@ export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
   @Post()
-  create(@Body() dto: CreateTenantDto) {
-    return this.tenantsService.create(dto);
+  async create(@Body() dto: CreateTenantDto) {
+    const data = await this.tenantsService.create(dto);
+    return { message: 'Tenant created successfully', data };
   }
 
   @Get()
-  findAll() {
-    return this.tenantsService.findAll();
+  async findAll() {
+    const data = await this.tenantsService.findAll();
+    return { data };
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.tenantsService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const data = await this.tenantsService.findOne(id);
+    return { data };
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
-    return this.tenantsService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
+    const data = await this.tenantsService.update(id, dto);
+    return { message: 'Tenant updated successfully', data };
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tenantsService.remove(id);
+  async remove(@Param('id') id: string) {
+    await this.tenantsService.remove(id);
+    return { message: 'Tenant deleted successfully' };
   }
 }

@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ArrayMinSize, IsArray, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateTenantDto {
   @ApiProperty({ example: 'My Tenant' })
@@ -20,4 +26,9 @@ export class CreateTenantDto {
   @IsArray()
   @ArrayMinSize(1)
   locales?: string[];
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isTemplate?: boolean;
 }

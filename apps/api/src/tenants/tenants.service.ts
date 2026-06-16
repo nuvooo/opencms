@@ -25,6 +25,11 @@ export class TenantsService {
     const schemaName = `tenant_${dto.slug.replace(/[^a-z0-9]/g, '_')}`;
     await this.tenantDb.createTenantSchema(schemaName);
 
+    const template = await this.tenantRepo.findOneBy({ isTemplate: true });
+    if (template) {
+      await this.tenantDb.copyContentTypes(template.schemaName, schemaName);
+    }
+
     const tenant = this.tenantRepo.create({ ...dto, schemaName });
     return this.tenantRepo.save(tenant);
   }
@@ -41,6 +46,9 @@ export class TenantsService {
 
   async update(id: string, dto: UpdateTenantDto) {
     const tenant = await this.findOne(id);
+    if (dto.isTemplate === true && !tenant.isTemplate) {
+      await this.tenantRepo.update({ isTemplate: true }, { isTemplate: false });
+    }
     Object.assign(tenant, dto);
     return this.tenantRepo.save(tenant);
   }
