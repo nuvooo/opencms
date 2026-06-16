@@ -1,36 +1,26 @@
-import Page from '@/app/(home)/page'; // Path to your Page component
+import Page from '@/app/(home)/page';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-// Mock the imported components
 vi.mock('@repo/shadcn/mode-switcher', () => ({
   ModeSwitcher: () => <div>ModeSwitcher</div>,
 }));
 
-vi.mock('@repo/shadcn/video/player', () => ({
-  VideoPlayer: ({
-    poster,
-    src,
-    className,
-  }: {
-    poster: string;
-    src: string;
-    className: string;
-  }) => (
-    <div data-testid="video-player" className={className}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={poster} alt="poster" />
-      <video src={src} />
-    </div>
-  ),
+vi.mock('@repo/shadcn/tiptap/rich-text-editor', () => ({
+  RichTextEditor: () => <div>RichTextEditor</div>,
 }));
 
-describe('Page Component', () => {
-  it('renders ModeSwitcher and VideoPlayer components', () => {
-    render(<Page />);
+vi.mock('@/components/session', () => ({
+  default: () => <div>Session</div>,
+}));
 
-    // Check if ModeSwitcher is rendered
+vi.mock('@/auth', () => ({
+  auth: vi.fn(async () => null),
+}));
+
+describe('Home Page', () => {
+  it('rendert die TopBar mit ModeSwitcher', async () => {
+    render(await Page());
     expect(screen.getByText('ModeSwitcher')).toBeDefined();
-    expect(screen.getByTestId('video-player')).toBeDefined();
   });
 });

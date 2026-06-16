@@ -1,22 +1,25 @@
 import { auth } from '@/auth';
 import LogoIcon from '@/components/logo-icon';
 import Session from '@/components/session';
+import TopBar from '@/components/top-bar';
 import { Button } from '@repo/shadcn/button';
-import { ModeSwitcher } from '@repo/shadcn/mode-switcher';
 import { RichTextEditor } from '@repo/shadcn/tiptap/rich-text-editor';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 const Page = async () => {
   const session = await auth();
+  if (session?.user) redirect('/admin');
   return (
     <section className="min-h-dvh container flex flex-col">
-      <nav className="w-full flex justify-between items-center py-5">
-        <Link href="/">
-          <LogoIcon width={30} height={30} />
-        </Link>
-        <ModeSwitcher />
-        <Session />
-      </nav>
+      <TopBar
+        start={
+          <Link href="/">
+            <LogoIcon width={30} height={30} />
+          </Link>
+        }
+        end={<Session />}
+      />
       <div>
         {/*<MediaPlayer>*/}
         {/*  <MediaPlayerVideo>*/}
