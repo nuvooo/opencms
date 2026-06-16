@@ -7,6 +7,7 @@ import ProfileHeader from '@/components/profile/profile-header';
 import ProfileSidebar from '@/components/profile/profile-sidebar';
 import SecuritySettings from '@/components/profile/security-settings';
 import SessionsSettings from '@/components/profile/sessions-settings';
+import TopBar from '@/components/top-bar';
 import { getUser } from '@/server/user.server';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { Tabs, TabsContent } from '@repo/shadcn/tabs';
@@ -30,6 +31,7 @@ const Page = async ({
   }
   return (
     <section className="min-h-screen bg-background">
+      <TopBar />
       <BackNavigation />
       <div className="bg-background shadow">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
