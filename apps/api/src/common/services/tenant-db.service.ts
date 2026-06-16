@@ -52,6 +52,9 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
       const tenants: { schema_name: string }[] = await this.dataSource.query(
         `SELECT schema_name FROM public.tenant`,
       );
+      await this.dataSource.query(
+        `ALTER TABLE public.tenant ADD COLUMN IF NOT EXISTS is_template boolean NOT NULL DEFAULT false`,
+      );
       for (const t of tenants) {
         await this.dataSource.query(`
           CREATE TABLE IF NOT EXISTS "${t.schema_name}"."relation" (
@@ -62,6 +65,25 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
             sort_order integer DEFAULT 0,
             UNIQUE(entry_id, field_name, related_entry_id)
           )
+        `);
+
+        await this.dataSource.query(`
+          CREATE TABLE IF NOT EXISTS "${t.schema_name}"."tenant_locale" (
+            id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+            code varchar(10) NOT NULL UNIQUE,
+            name varchar(100) NOT NULL,
+            is_default boolean DEFAULT false
+          )
+        `);
+
+        await this.dataSource.query(`
+          INSERT INTO "${t.schema_name}"."tenant_locale" (code, name, is_default)
+          SELECT 'en', 'English', true
+          WHERE NOT EXISTS (SELECT 1 FROM "${t.schema_name}"."tenant_locale" WHERE code = 'en')
+        `);
+
+        await this.dataSource.query(`
+          ALTER TABLE "${t.schema_name}"."entry" ADD COLUMN IF NOT EXISTS locale_group_id uuid
         `);
       }
       if (tenants.length > 0) {
@@ -127,6 +149,25 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
         UNIQUE(entry_id, field_name, related_entry_id)
       )
     `);
+
+    await this.dataSource.query(`
+      CREATE TABLE IF NOT EXISTS "${schemaName}"."tenant_locale" (
+        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        code varchar(10) NOT NULL UNIQUE,
+        name varchar(100) NOT NULL,
+        is_default boolean DEFAULT false
+      )
+    `);
+
+    await this.dataSource.query(`
+      INSERT INTO "${schemaName}"."tenant_locale" (code, name, is_default)
+      SELECT 'en', 'English', true
+      WHERE NOT EXISTS (SELECT 1 FROM "${schemaName}"."tenant_locale" WHERE code = 'en')
+    `);
+
+    await this.dataSource.query(`
+      ALTER TABLE "${schemaName}"."entry" ADD COLUMN IF NOT EXISTS locale_group_id uuid
+    `);
   }
 
   async dropTenantSchema(schemaName: string): Promise<void> {
@@ -149,7 +190,8 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
         sql
           .replaceAll('"content_type"', `"${schemaName}"."content_type"`)
           .replaceAll('"entry"', `"${schemaName}"."entry"`)
-          .replaceAll('"relation"', `"${schemaName}"."relation"`),
+          .replaceAll('"relation"', `"${schemaName}"."relation"`)
+          .replaceAll('"tenant_locale"', `"${schemaName}"."tenant_locale"`),
         params,
       ),
     );

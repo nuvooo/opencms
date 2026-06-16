@@ -17,11 +17,14 @@ export class Tenant {
   @Column({ length: 50, unique: true })
   slug: string;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: true })
   domain: string | null;
 
-  @Column('simple-array', { default: ['en'] })
+  @Column('simple-array', { default: 'en' })
   locales: string[];
+
+  @Column({ name: 'is_template', type: 'boolean', default: false })
+  isTemplate: boolean;
 
   @Column({ name: 'schema_name', length: 50, unique: true })
   schemaName: string;
