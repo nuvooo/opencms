@@ -22,6 +22,10 @@ export class TenantsService {
     const existing = await this.tenantRepo.findOneBy({ slug: dto.slug });
     if (existing) throw new ConflictException('Slug already exists');
 
+    if (dto.isTemplate === true) {
+      await this.tenantRepo.update({ isTemplate: true }, { isTemplate: false });
+    }
+
     const schemaName = `tenant_${dto.slug.replace(/[^a-z0-9]/g, '_')}`;
     await this.tenantDb.createTenantSchema(schemaName);
 
@@ -46,8 +50,12 @@ export class TenantsService {
 
   async update(id: string, dto: UpdateTenantDto) {
     const tenant = await this.findOne(id);
-    if (dto.isTemplate === true && !tenant.isTemplate) {
-      await this.tenantRepo.update({ isTemplate: true }, { isTemplate: false });
+    if (dto.isTemplate === true) {
+      return this.tenantRepo.manager.transaction(async (em) => {
+        await em.update(Tenant, { isTemplate: true }, { isTemplate: false });
+        Object.assign(tenant, dto);
+        return em.save(Tenant, tenant);
+      });
     }
     Object.assign(tenant, dto);
     return this.tenantRepo.save(tenant);
