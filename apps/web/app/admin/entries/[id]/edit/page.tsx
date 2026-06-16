@@ -3,6 +3,11 @@
 import EntryPreview from '@/components/admin/entry-preview';
 import ImagePicker from '@/components/admin/image-picker';
 import RelationPicker from '@/components/admin/relation-picker';
+import {
+  buildActiveFields,
+  isFieldEnabled as fieldEnabled,
+  initEnabledFromEntry,
+} from '@/lib/entry-fields';
 import { getContentTypes } from '@/server/content-type.server';
 import {
   createEntry,
@@ -84,14 +89,12 @@ const Page = () => {
             (ct) => ct.slug === entryData.content_type_slug,
           );
           if (loadedCt) {
-            const init: Record<string, boolean> = {};
-            for (const f of loadedCt.fields) {
-              init[f.name] = Object.prototype.hasOwnProperty.call(
-                entryData.fields ?? {},
-                f.name,
-              );
-            }
-            setEnabledFields(init);
+            setEnabledFields(
+              initEnabledFromEntry(
+                loadedCt.fields,
+                entryData.fields as Record<string, unknown> | null | undefined,
+              ),
+            );
           }
 
           if (entryData.locale_group_id) {
@@ -112,7 +115,7 @@ const Page = () => {
 
   const currentCt = contentTypes.find((ct) => ct.slug === selectedCt);
 
-  const isFieldEnabled = (name: string) => enabledFields[name] !== false;
+  const isFieldEnabled = (name: string) => fieldEnabled(enabledFields, name);
   const toggleField = (name: string) =>
     setEnabledFields((p) => ({
       ...p,
@@ -397,10 +400,10 @@ const Page = () => {
     setLoading(true);
 
     try {
-      const activeFields = Object.fromEntries(
-        currentCt!.fields
-          .filter((f) => enabledFields[f.name] !== false)
-          .map((f) => [f.name, fields[f.name] ?? null]),
+      const activeFields = buildActiveFields(
+        currentCt!.fields,
+        enabledFields,
+        fields,
       );
 
       await updateEntry(tenantId, id, {

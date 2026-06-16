@@ -4,6 +4,10 @@ import EntryPreview from '@/components/admin/entry-preview';
 import ImagePicker from '@/components/admin/image-picker';
 import LocaleTabs from '@/components/admin/locale-tabs';
 import RelationPicker from '@/components/admin/relation-picker';
+import {
+  buildActiveFields,
+  isFieldEnabled as fieldEnabled,
+} from '@/lib/entry-fields';
 import { getContentTypes } from '@/server/content-type.server';
 import { createEntry } from '@/server/entry.server';
 import { getLocales } from '@/server/locale.server';
@@ -66,7 +70,7 @@ const Page = () => {
 
   const currentCt = contentTypes.find((ct) => ct.slug === selectedCt);
 
-  const isFieldEnabled = (name: string) => enabledFields[name] !== false;
+  const isFieldEnabled = (name: string) => fieldEnabled(enabledFields, name);
   const toggleField = (name: string) =>
     setEnabledFields((p) => ({
       ...p,
@@ -333,10 +337,10 @@ const Page = () => {
     try {
       const localeGroupId = crypto.randomUUID();
 
-      const activeFields = Object.fromEntries(
-        currentCt!.fields
-          .filter((f) => enabledFields[f.name] !== false)
-          .map((f) => [f.name, fields[f.name] ?? null]),
+      const activeFields = buildActiveFields(
+        currentCt!.fields,
+        enabledFields,
+        fields,
       );
 
       const entry = await createEntry(tenantId, {
