@@ -14,6 +14,7 @@ const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
     ? {
         name: session.user.profile.name,
         email: session.user.email,
+        username: session.user.username,
         avatar: session.user.profile.profilePicture || null,
       }
     : undefined;

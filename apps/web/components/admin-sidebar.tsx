@@ -19,6 +19,7 @@ interface AdminSidebarProps {
   user?: {
     name?: string | null;
     email?: string | null;
+    username?: string | null;
     avatar?: string | null;
   };
 }
@@ -74,25 +75,30 @@ const AdminSidebar = ({ user }: AdminSidebarProps) => {
         <TenantSelector />
         {user && (
           <div className="flex items-center gap-3 px-4 py-3 border-t">
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="size-8 rounded-full object-cover"
-                />
-              ) : (
-                <User className="size-4 text-muted-foreground" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user.name || 'User'}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {user.email}
-              </p>
-            </div>
+            <Link
+              href={user.username ? `/${user.username}` : '/admin'}
+              className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
+            >
+              <div className="size-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name || 'User'}
+                    className="size-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <User className="size-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {user.name || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.email}
+                </p>
+              </div>
+            </Link>
             <SignOut />
           </div>
         )}
@@ -117,7 +123,7 @@ const AdminSidebar = ({ user }: AdminSidebarProps) => {
               {user && (
                 <div className="border-t pt-2">
                   <Link
-                    href="/admin/profile"
+                    href={user.username ? `/${user.username}` : '/admin'}
                     className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                     onClick={() => setOpen(false)}
                   >
