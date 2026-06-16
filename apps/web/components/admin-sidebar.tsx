@@ -2,7 +2,6 @@
 
 import ContentTypeNav from '@/components/admin/content-type-nav';
 import SignOut from '@/components/auth/sign-out';
-import TenantSelector from '@/components/tenant-selector';
 import { getIcon } from '@/lib/plugin/icons';
 import { usePluginRegistry } from '@/lib/plugin/registry';
 import { Button } from '@repo/shadcn/button';
@@ -71,9 +70,8 @@ const AdminSidebar = ({ user }: AdminSidebarProps) => {
         <NavContent />
       </ScrollArea>
       <div className="border-t">
-        <TenantSelector />
         {user && (
-          <div className="flex items-center gap-3 px-4 py-3 border-t">
+          <div className="flex items-center gap-3 px-4 py-3">
             <Link
               href="/admin/profile"
               className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
@@ -118,7 +116,6 @@ const AdminSidebar = ({ user }: AdminSidebarProps) => {
             <div className="font-semibold text-lg">CMS Admin</div>
             <NavContent mobile />
             <div className="mt-auto space-y-2">
-              <TenantSelector />
               {user && (
                 <div className="border-t pt-2">
                   <Link
