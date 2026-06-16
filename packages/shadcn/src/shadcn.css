@@ -303,11 +303,21 @@
   }
 
   /* View Transition Animations */
+  /* Reset the UA default mix-blend-mode (plus-lighter) so the revealed area
+     does not additively blend old + new snapshots into washed-out colors. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    mix-blend-mode: normal;
+  }
+
   ::view-transition-new(root) {
     z-index: 500000;
     mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="white"/></svg>')
       center / 0 no-repeat;
-    animation: scale 1s;
+    /* forwards: keep the mask fully expanded until the snapshot is removed,
+       otherwise mask-size snaps back to 0 on the final frame and the old
+       theme flashes through (the switch flicker). */
+    animation: scale 1s forwards;
   }
 
   ::view-transition-old(root),
@@ -317,7 +327,7 @@
   }
   .dark::view-transition-new(root) {
     z-index: 500000;
-    animation: scale 1s;
+    animation: scale 1s forwards;
   }
 
   /* No Scrollbar Utility */
