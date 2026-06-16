@@ -95,7 +95,7 @@ const defaultPlugins: PluginDescriptor[] = [
     isSystem: true,
     enabled: true,
     navItems: [
-      { path: '/admin/profile', label: 'API Tokens', icon: 'KeyRound' },
+      { path: '/admin/api-tokens', label: 'API Tokens', icon: 'KeyRound' },
     ],
   },
 ];
