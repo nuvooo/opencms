@@ -1,3 +1,4 @@
+import { FileService } from '@/features/file/file.service';
 import { User } from '@/features/users/entities/user.entity';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -16,6 +17,15 @@ describe('UsersController', () => {
         {
           provide: getRepositoryToken(User),
           useClass: Repository,
+        },
+        {
+          provide: FileService,
+          useValue: {
+            uploadFile: jest.fn(),
+            deleteFile: jest.fn(),
+            uploadFiles: jest.fn(),
+            deleteFiles: jest.fn(),
+          },
         },
       ],
     }).compile();

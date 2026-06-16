@@ -1,6 +1,7 @@
 import { MailerModule, MailerService } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Logger } from 'nestjs-pino';
 import { MailService } from './mail.service';
 
 describe('MailService', () => {
@@ -16,6 +17,16 @@ describe('MailService', () => {
           provide: MailerService,
           useValue: {
             sendMail: jest.fn(), // mock any methods you use
+          },
+        },
+        {
+          provide: Logger,
+          useValue: {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+            verbose: jest.fn(),
           },
         },
       ],
