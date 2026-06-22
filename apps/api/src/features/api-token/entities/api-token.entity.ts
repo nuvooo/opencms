@@ -20,7 +20,7 @@ export class ApiToken extends Base {
   @Column()
   userId: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   expiresAt?: Date;
 
   @BeforeInsert()

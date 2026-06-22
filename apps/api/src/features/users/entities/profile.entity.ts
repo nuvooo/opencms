@@ -52,7 +52,7 @@ export class Profile extends Base {
    * The gender of the user.
    * @type {string}
    */
-  @Column({ type: 'enum', enum: Gender, default: Gender.UNKNOWN })
+  @Column({ type: 'simple-enum', enum: Gender, default: Gender.UNKNOWN })
   gender: string;
 
   /**

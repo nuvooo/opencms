@@ -10,12 +10,16 @@ export const ValidateDbResponseSchema = z.object({
 });
 
 export const ValidateDbInputSchema = z.object({
-  host: z.string().min(1),
-  port: z.string().min(1),
-  username: z.string().min(1),
-  password: z.string().min(1),
-  name: z.string().min(1),
-  ssl: z.boolean(),
+  // Engine selection. For sqlite only `database` (file path) is required; the
+  // connection fields are ignored.
+  type: z.enum(['postgres', 'mysql', 'sqlite']).default('postgres'),
+  host: z.string().optional(),
+  port: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  name: z.string().optional(),
+  database: z.string().optional(),
+  ssl: z.boolean().optional(),
 });
 
 const passwordSchema = z

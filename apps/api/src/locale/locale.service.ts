@@ -1,5 +1,6 @@
 import { TenantDbService } from '@/common/services';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { CreateLocaleDto } from './dto/create-locale.dto';
 import { UpdateLocaleDto } from './dto/update-locale.dto';
 
@@ -14,14 +15,15 @@ export class LocaleService {
       );
     }
 
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    const id = randomUUID();
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `INSERT INTO "tenant_locale" (code, name, is_default) VALUES ($1, $2, $3) RETURNING *`,
-        [dto.code, dto.name, dto.is_default || false],
+        `INSERT INTO "tenant_locale" (id, code, name, is_default) VALUES ($1, $2, $3, $4)`,
+        [id, dto.code, dto.name, dto.is_default || false],
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async findAll(schemaName: string) {
@@ -60,14 +62,14 @@ export class LocaleService {
     const setClauses = entries.map(([key], i) => `"${key}" = $${i + 1}`);
     const values = entries.map(([_, v]) => v);
 
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `UPDATE "tenant_locale" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1} RETURNING *`,
+        `UPDATE "tenant_locale" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1}`,
         [...values, id],
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async remove(schemaName: string, id: string) {

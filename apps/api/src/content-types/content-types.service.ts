@@ -1,5 +1,6 @@
 import { TenantDbService } from '@/common/services';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { CreateContentTypeDto } from './dto/create-content-type.dto';
 import { UpdateContentTypeDto } from './dto/update-content-type.dto';
 
@@ -9,11 +10,13 @@ export class ContentTypesService {
 
   async create(schemaName: string, dto: CreateContentTypeDto) {
     const slug = dto.slug || dto.name.toLowerCase().replace(/\s+/g, '-');
+    const id = randomUUID();
 
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `INSERT INTO "content_type" (id, name, slug, description, fields) VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *`,
+        `INSERT INTO "content_type" (id, name, slug, description, fields) VALUES ($1, $2, $3, $4, $5)`,
         [
+          id,
           dto.name,
           slug,
           dto.description || null,
@@ -22,7 +25,7 @@ export class ContentTypesService {
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async findAll(schemaName: string) {
@@ -64,14 +67,14 @@ export class ContentTypesService {
 
     setClauses.push(`"updated_at" = now()`);
 
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `UPDATE "content_type" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1} RETURNING *`,
+        `UPDATE "content_type" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1}`,
         [...values, id],
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async remove(schemaName: string, id: string) {

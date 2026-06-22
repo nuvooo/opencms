@@ -1,5 +1,6 @@
 import { TenantDbService } from '@/common/services';
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class RelationService {
@@ -18,8 +19,8 @@ export class RelationService {
       );
       for (let i = 0; i < relatedEntryIds.length; i++) {
         await query(
-          `INSERT INTO "relation" (entry_id, field_name, related_entry_id, sort_order) VALUES ($1, $2, $3, $4)`,
-          [entryId, fieldName, relatedEntryIds[i], i],
+          `INSERT INTO "relation" (id, entry_id, field_name, related_entry_id, sort_order) VALUES ($1, $2, $3, $4, $5)`,
+          [randomUUID(), entryId, fieldName, relatedEntryIds[i], i],
         );
       }
     });

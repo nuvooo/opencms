@@ -4,11 +4,13 @@ export const SETUP_ENV_ALLOWLIST = [
   'ALLOW_CORS_URL',
   'AUTH_SECRET',
   'AUTH_URL',
+  'DB_TYPE',
   'DB_HOST',
   'DB_PORT',
   'DB_USERNAME',
   'DB_PASSWORD',
   'DB_NAME',
+  'DB_DATABASE',
   'DB_SSL',
 ] as const;
 

@@ -1,5 +1,6 @@
 import { TenantDbService } from '@/common/services';
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { CreateEntryDto } from './dto/create-entry.dto';
 import { UpdateEntryDto } from './dto/update-entry.dto';
 
@@ -8,10 +9,12 @@ export class EntriesService {
   constructor(private tenantDb: TenantDbService) {}
 
   async create(schemaName: string, dto: CreateEntryDto) {
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    const id = randomUUID();
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `INSERT INTO "entry" (id, content_type_slug, fields, locale, status, locale_group_id) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING *`,
+        `INSERT INTO "entry" (id, content_type_slug, fields, locale, status, locale_group_id) VALUES ($1, $2, $3, $4, $5, $6)`,
         [
+          id,
           dto.content_type_slug,
           JSON.stringify(dto.fields),
           dto.locale || 'en',
@@ -21,7 +24,7 @@ export class EntriesService {
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async findAll(
@@ -111,14 +114,14 @@ export class EntriesService {
 
     setClauses.push(`"updated_at" = now()`);
 
-    const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
+    await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `UPDATE "entry" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1} RETURNING *`,
+        `UPDATE "entry" SET ${setClauses.join(', ')} WHERE id = $${entries.length + 1}`,
         [...values, id],
       ),
     );
 
-    return rows[0];
+    return this.findOne(schemaName, id);
   }
 
   async remove(schemaName: string, id: string) {
@@ -129,7 +132,7 @@ export class EntriesService {
         `DELETE FROM "relation" WHERE entry_id = $1 OR related_entry_id = $2`,
         [id, id],
       );
-      await query(`DELETE FROM "entry" WHERE id = $3`, [id]);
+      await query(`DELETE FROM "entry" WHERE id = $1`, [id]);
     });
   }
 }

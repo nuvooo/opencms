@@ -48,6 +48,6 @@ export class Otp extends Base {
    * The OTP token type.
    * @type {string}
    */
-  @Column({ type: 'enum', enum: TokenTypes, nullable: false })
+  @Column({ type: 'simple-enum', enum: TokenTypes, nullable: false })
   type: string;
 }

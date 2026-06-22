@@ -8,6 +8,8 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { mkdir } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { Client } from 'pg';
 import { Repository } from 'typeorm';
 import { BootstrapSetupDto } from './dto/bootstrap-setup.dto';
@@ -60,6 +62,18 @@ export class SetupService {
   }
 
   async validateDatabase(dto: ValidateDbDto): Promise<void> {
+    const type = dto.type ?? 'postgres';
+
+    if (type === 'sqlite') {
+      return this.validateSqlite(dto);
+    }
+    if (type === 'mysql') {
+      return this.validateMysql(dto);
+    }
+    return this.validatePostgres(dto);
+  }
+
+  private async validatePostgres(dto: ValidateDbDto): Promise<void> {
     const client = new Client({
       host: dto.host,
       port: Number(dto.port),
@@ -76,6 +90,43 @@ export class SetupService {
       throw new BadRequestException('Database connection failed');
     } finally {
       await client.end().catch(() => null);
+    }
+  }
+
+  private async validateMysql(dto: ValidateDbDto): Promise<void> {
+    try {
+      // Imported lazily so the driver is only required when MySQL is selected.
+      const mysql = (await import(
+        'mysql2/promise'
+      )) as typeof import('mysql2/promise');
+      const connection = await mysql.createConnection({
+        host: dto.host,
+        port: Number(dto.port),
+        user: dto.username,
+        password: dto.password,
+        database: dto.name,
+        ssl: dto.ssl ? { rejectUnauthorized: false } : undefined,
+      });
+      try {
+        await connection.query('SELECT 1');
+      } finally {
+        await connection.end();
+      }
+    } catch {
+      throw new BadRequestException('Database connection failed');
+    }
+  }
+
+  private async validateSqlite(dto: ValidateDbDto): Promise<void> {
+    const file = dto.database ?? dto.name ?? './data/cms.sqlite';
+    try {
+      // The file itself is created on first connection; we only need to make
+      // sure its parent directory exists and is writable.
+      await mkdir(dirname(resolve(file)), { recursive: true });
+    } catch {
+      throw new BadRequestException(
+        'SQLite database directory is not writable',
+      );
     }
   }
 
@@ -96,16 +147,19 @@ export class SetupService {
     try {
       await this.validateDatabase(dto.database);
 
+      const db = dto.database;
       this.envService.writeAllowlisted({
         ALLOW_CORS_URL: dto.app.allowCorsUrl,
         AUTH_SECRET: dto.app.authSecret,
         AUTH_URL: dto.app.authUrl,
-        DB_HOST: dto.database.host,
-        DB_PORT: dto.database.port,
-        DB_USERNAME: dto.database.username,
-        DB_PASSWORD: dto.database.password,
-        DB_NAME: dto.database.name,
-        DB_SSL: String(dto.database.ssl),
+        DB_TYPE: db.type ?? 'postgres',
+        DB_HOST: db.host,
+        DB_PORT: db.port,
+        DB_USERNAME: db.username,
+        DB_PASSWORD: db.password,
+        DB_NAME: db.name,
+        DB_DATABASE: db.database,
+        DB_SSL: db.ssl === undefined ? undefined : String(db.ssl),
       });
 
       await this.createAdmin(dto.admin.email, dto.admin.password);
