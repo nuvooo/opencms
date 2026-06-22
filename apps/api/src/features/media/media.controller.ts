@@ -1,5 +1,6 @@
 import { TenantInterceptor } from '@/common/interceptors/tenant.interceptor';
 import { FileService } from '@/features/file/file.service';
+import { RequiresPlugin } from '@/features/plugin/requires-plugin.decorator';
 import {
   FileInterceptor,
   MemoryStorageFile,
@@ -27,6 +28,7 @@ import { MediaService } from './media.service';
   required: true,
 })
 @UseInterceptors(TenantInterceptor)
+@RequiresPlugin('media')
 @Controller('media')
 export class MediaController {
   constructor(

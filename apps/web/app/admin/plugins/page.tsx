@@ -6,13 +6,18 @@ import {
   getPlugins,
   installPlugin,
   rescanPlugins,
+  togglePlugin,
   uninstallPlugin,
 } from '@/server/plugin.server';
 import { Badge } from '@repo/shadcn/badge';
 import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { toast } from '@repo/shadcn/sonner';
+import { Switch } from '@repo/shadcn/switch';
 import { useEffect, useState } from 'react';
+
+// Kept enabled so an admin can always reach the plugin manager / dashboard.
+const PROTECTED_PLUGIN_IDS = new Set(['plugins', 'dashboard']);
 
 const Page = () => {
   const [plugins, setPlugins] = useState<PluginDescriptor[]>([]);
@@ -21,6 +26,23 @@ const Page = () => {
   const [rescanning, setRescanning] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const handleToggle = async (id: string, enabled: boolean) => {
+    setTogglingId(id);
+    try {
+      const next = await togglePlugin(id, enabled);
+      setPlugins(next);
+      setError(null);
+      toast.success(`Plugin ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to update plugin';
+      toast.error(message);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   useEffect(() => {
     getPlugins()
@@ -182,11 +204,22 @@ const Page = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge
-                          variant={plugin.enabled ? 'default' : 'secondary'}
-                        >
-                          {plugin.enabled ? 'Enabled' : 'Disabled'}
-                        </Badge>
+                        <Switch
+                          checked={plugin.enabled}
+                          disabled={
+                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
+                            togglingId === plugin.id
+                          }
+                          onCheckedChange={(value: boolean) =>
+                            handleToggle(plugin.id, value)
+                          }
+                          aria-label={`Toggle ${plugin.name}`}
+                          title={
+                            PROTECTED_PLUGIN_IDS.has(plugin.id)
+                              ? 'This plugin cannot be disabled'
+                              : undefined
+                          }
+                        />
                         <Badge variant="outline" className="text-xs">
                           System
                         </Badge>
@@ -239,11 +272,17 @@ const Page = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge
-                          variant={plugin.enabled ? 'default' : 'secondary'}
-                        >
-                          {plugin.enabled ? 'Enabled' : 'Disabled'}
-                        </Badge>
+                        <Switch
+                          checked={plugin.enabled}
+                          disabled={
+                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
+                            togglingId === plugin.id
+                          }
+                          onCheckedChange={(value: boolean) =>
+                            handleToggle(plugin.id, value)
+                          }
+                          aria-label={`Toggle ${plugin.name}`}
+                        />
                         <Badge variant="secondary" className="text-xs">
                           Installed
                         </Badge>

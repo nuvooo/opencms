@@ -1,3 +1,4 @@
+import { RequiresPlugin } from '@/features/plugin/requires-plugin.decorator';
 import {
   Body,
   Controller,
@@ -13,6 +14,7 @@ import { CreateApiTokenDto } from './dto/create-api-token.dto';
 
 @ApiTags('api-tokens')
 @ApiBearerAuth()
+@RequiresPlugin('api-tokens')
 @Controller('api-tokens')
 export class ApiTokenController {
   constructor(private readonly apiTokenService: ApiTokenService) {}

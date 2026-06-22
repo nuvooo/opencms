@@ -1,4 +1,5 @@
 import { TenantInterceptor } from '@/common/interceptors/tenant.interceptor';
+import { RequiresPlugin } from '@/features/plugin/requires-plugin.decorator';
 import {
   Body,
   Controller,
@@ -23,6 +24,7 @@ import { UpdateContentTypeDto } from './dto/update-content-type.dto';
   required: true,
 })
 @UseInterceptors(TenantInterceptor)
+@RequiresPlugin('content-types')
 @Controller('content-types')
 export class ContentTypesController {
   constructor(private readonly contentTypesService: ContentTypesService) {}

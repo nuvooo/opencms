@@ -26,6 +26,7 @@ import { ApiTokenModule } from './features/api-token/api-token.module';
 import { AuthModule } from './features/auth/auth.module';
 import { HealthModule } from './features/health/health.module';
 import { MailModule } from './features/mail/mail.module';
+import { PluginEnabledGuard } from './features/plugin/plugin-enabled.guard';
 import { Tenant } from './tenants/tenant.entity';
 import { TenantsModule } from './tenants/tenants.module';
 
@@ -47,6 +48,10 @@ import { TenantsModule } from './tenants/tenants.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PluginEnabledGuard,
     },
   ],
   imports: [

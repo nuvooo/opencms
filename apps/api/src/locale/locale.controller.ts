@@ -1,4 +1,5 @@
 import { TenantInterceptor } from '@/common/interceptors/tenant.interceptor';
+import { RequiresPlugin } from '@/features/plugin/requires-plugin.decorator';
 import {
   Body,
   Controller,
@@ -23,6 +24,7 @@ import { LocaleService } from './locale.service';
   required: true,
 })
 @UseInterceptors(TenantInterceptor)
+@RequiresPlugin('locales')
 @Controller('locales')
 export class LocaleController {
   constructor(private readonly localeService: LocaleService) {}

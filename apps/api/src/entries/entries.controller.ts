@@ -1,4 +1,5 @@
 import { TenantInterceptor } from '@/common/interceptors/tenant.interceptor';
+import { RequiresPlugin } from '@/features/plugin/requires-plugin.decorator';
 import {
   Body,
   Controller,
@@ -24,6 +25,7 @@ import { EntriesService } from './entries.service';
   required: true,
 })
 @UseInterceptors(TenantInterceptor)
+@RequiresPlugin('entries')
 @Controller('entries')
 export class EntriesController {
   constructor(private readonly entriesService: EntriesService) {}

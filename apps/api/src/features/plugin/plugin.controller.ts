@@ -1,15 +1,18 @@
 import { Roles } from '@/common/decorators';
 import { FileInterceptor, MemoryStorageFile } from '@blazity/nest-file-fastify';
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { UpdatePluginDto } from './dto/update-plugin.dto';
 import { PluginFilesService } from './plugin-files.service';
 import { PluginRegistryService } from './plugin-registry.service';
 
@@ -45,6 +48,16 @@ export class PluginController {
   rescan() {
     const plugins = this.pluginRegistry.rescan();
     return { message: 'Plugins rescanned successfully', data: plugins };
+  }
+
+  @Patch(':id')
+  @Roles('ADMIN')
+  async setEnabled(@Param('id') id: string, @Body() dto: UpdatePluginDto) {
+    await this.pluginRegistry.setEnabled(id, dto.enabled);
+    return {
+      message: `Plugin ${id} ${dto.enabled ? 'enabled' : 'disabled'}`,
+      data: this.pluginRegistry.getAll(),
+    };
   }
 
   @Delete(':id')

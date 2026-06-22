@@ -55,6 +55,24 @@ export const rescanPlugins = async (): Promise<PluginDescriptor[]> => {
   return data.data;
 };
 
+export const togglePlugin = async (
+  id: string,
+  enabled: boolean,
+): Promise<PluginDescriptor[]> => {
+  const session = await auth();
+  const [error, data] = await safeFetch(
+    PluginsResponseSchema,
+    `/plugins/${id}`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(session, { json: true }),
+      body: JSON.stringify({ enabled }),
+    },
+  );
+  if (error) throw new Error(error);
+  return data.data;
+};
+
 export const uninstallPlugin = async (
   id: string,
 ): Promise<PluginDescriptor[]> => {

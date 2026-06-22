@@ -4,22 +4,47 @@ import {
   Injectable,
   OnModuleInit,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PluginState } from './entities/plugin-state.entity';
 import { PluginLoaderService } from './plugin-loader.service';
 import { PluginDescriptor } from './plugin.registry.types';
 
 @Injectable()
 export class PluginRegistryService implements OnModuleInit {
   private plugins = new Map<string, PluginDescriptor>();
+  private enabledStates = new Map<string, boolean>();
 
-  constructor(private readonly loader: PluginLoaderService) {}
+  /**
+   * Plugins that must never be disabled, so an admin can always recover:
+   * the plugin manager itself and the dashboard.
+   */
+  private static readonly PROTECTED = new Set(['plugins', 'dashboard']);
 
-  onModuleInit(): void {
+  constructor(
+    private readonly loader: PluginLoaderService,
+    @InjectRepository(PluginState)
+    private readonly stateRepo: Repository<PluginState>,
+  ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.loadStates();
     this.rescan();
+  }
+
+  private async loadStates(): Promise<void> {
+    const rows = await this.stateRepo.find();
+    this.enabledStates = new Map(rows.map((r) => [r.pluginId, r.enabled]));
   }
 
   rescan(): PluginDescriptor[] {
     const loaded = this.loader.loadAll();
-    this.plugins = new Map(loaded.map((plugin) => [plugin.id, plugin]));
+    this.plugins = new Map(
+      loaded.map((plugin) => [
+        plugin.id,
+        { ...plugin, enabled: this.enabledStates.get(plugin.id) ?? true },
+      ]),
+    );
     return this.getAll();
   }
 
@@ -29,6 +54,26 @@ export class PluginRegistryService implements OnModuleInit {
 
   get(id: string): PluginDescriptor | undefined {
     return this.plugins.get(id);
+  }
+
+  isProtected(id: string): boolean {
+    return PluginRegistryService.PROTECTED.has(id);
+  }
+
+  async setEnabled(id: string, enabled: boolean): Promise<PluginDescriptor> {
+    const plugin = this.get(id);
+    if (!plugin) {
+      throw new BadRequestException('Plugin not found');
+    }
+    if (!enabled && this.isProtected(id)) {
+      throw new ForbiddenException(`The "${id}" plugin cannot be disabled`);
+    }
+
+    await this.stateRepo.save({ pluginId: id, enabled });
+    this.enabledStates.set(id, enabled);
+    plugin.enabled = enabled;
+    this.plugins.set(id, plugin);
+    return plugin;
   }
 
   assertRemovable(id: string): PluginDescriptor {

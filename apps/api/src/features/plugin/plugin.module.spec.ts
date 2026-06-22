@@ -1,4 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { PluginState } from './entities/plugin-state.entity';
 import { PluginFilesService } from './plugin-files.service';
 import { PluginLoaderService } from './plugin-loader.service';
 import { PluginRegistryService } from './plugin-registry.service';
@@ -12,7 +14,10 @@ describe('PluginModule', () => {
   it('registers the plugin controller and services', async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [PluginModule],
-    }).compile();
+    })
+      .overrideProvider(getRepositoryToken(PluginState))
+      .useValue({ find: jest.fn().mockResolvedValue([]), save: jest.fn() })
+      .compile();
 
     expect(moduleRef.get(PluginController)).toBeInstanceOf(PluginController);
     expect(moduleRef.get(PluginRegistryService)).toBeInstanceOf(

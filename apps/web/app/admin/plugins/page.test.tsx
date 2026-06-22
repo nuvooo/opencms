@@ -13,6 +13,7 @@ const getPluginsMock = vi.fn();
 const installPluginMock = vi.fn();
 const rescanPluginsMock = vi.fn();
 const uninstallPluginMock = vi.fn();
+const togglePluginMock = vi.fn();
 
 vi.mock('@/lib/plugin/icons', () => ({
   getIcon: () => <span>icon</span>,
@@ -23,6 +24,7 @@ vi.mock('@/server/plugin.server', () => ({
   installPlugin: (...args: unknown[]) => installPluginMock(...args),
   rescanPlugins: (...args: unknown[]) => rescanPluginsMock(...args),
   uninstallPlugin: (...args: unknown[]) => uninstallPluginMock(...args),
+  togglePlugin: (...args: unknown[]) => togglePluginMock(...args),
 }));
 
 vi.mock('@repo/shadcn/sonner', () => ({
@@ -37,7 +39,7 @@ describe('admin plugins page', () => {
     vi.clearAllMocks();
   });
 
-  it('renders plugin status from plugin.enabled instead of hardcoded enabled', async () => {
+  it('reflects plugin.enabled in the per-plugin toggle switch', async () => {
     getPluginsMock.mockResolvedValue([
       {
         id: 'core-disabled',
@@ -73,8 +75,16 @@ describe('admin plugins page', () => {
 
     expect(coreCard).not.toBeNull();
     expect(userCard).not.toBeNull();
-    expect(within(coreCard as HTMLElement).getByText('Disabled')).toBeDefined();
-    expect(within(userCard as HTMLElement).getByText('Enabled')).toBeDefined();
+    expect(
+      within(coreCard as HTMLElement)
+        .getByRole('switch')
+        .getAttribute('aria-checked'),
+    ).toBe('false');
+    expect(
+      within(userCard as HTMLElement)
+        .getByRole('switch')
+        .getAttribute('aria-checked'),
+    ).toBe('true');
   });
 
   it('prevents starting a second delete while one is in flight', async () => {
