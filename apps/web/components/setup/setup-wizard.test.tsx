@@ -82,11 +82,13 @@ describe('SetupWizard', () => {
       screen.getByRole('button', { name: /validate connection/i }),
     );
     expect(validateAction.execute).toHaveBeenCalledWith({
+      type: 'postgres',
       host: 'localhost',
       port: '5432',
       username: 'postgres',
       password: '',
       name: '',
+      database: './data/cms.sqlite',
       ssl: false,
     });
 

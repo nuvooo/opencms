@@ -13,7 +13,7 @@ and deployment.
 - `SWC` for fast TypeScript and JavaScript transpilation
 - `pnpm` for efficient dependency management
 - `JWT` Access Token & Refresh Token Authentication for secure API access
-- `PostgreSQL` database with TypeORM
+- `PostgreSQL`, `MySQL`/`MariaDB` or `SQLite` database with TypeORM (selectable via `DB_TYPE`)
 - `Nodemailer` for email services
 - `Linting` and `Formatting` pre-configured for code quality
 - `Micro-Frontend` Support with Turborepo
@@ -78,8 +78,44 @@ turborepo
 
 ### Backend (NestJS)
 
-The backend is powered by NestJS, with TypeORM configured to use PostgreSQL. JWT access token and refresh token
+The backend is powered by NestJS, with TypeORM. JWT access token and refresh token
 authentication is implemented for secure API access. Nodemailer is used to handle email services.
+
+#### Choosing a database
+
+The backend runs on **PostgreSQL** (default), **MySQL/MariaDB** or **SQLite**. Select the engine with the
+`DB_TYPE` environment variable in `apps/api/.env`:
+
+```shell
+# PostgreSQL (default)
+DB_TYPE=postgres
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=password
+DB_NAME=cms
+
+# MySQL / MariaDB
+DB_TYPE=mysql
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=password
+DB_NAME=cms
+
+# SQLite (no server needed — great for local development)
+DB_TYPE=sqlite
+DB_DATABASE=./data/cms.sqlite
+```
+
+Notes:
+
+- Multi-tenancy is implemented with a **table-name prefix per tenant** (e.g. `tenant_acme_entry`), so it works
+  identically across all three engines (Postgres schemas are no longer required).
+- For PostgreSQL the `pg` driver is used, for MySQL/MariaDB `mysql2`, and for SQLite `better-sqlite3` — all three are
+  installed by default.
+- With `DB_TYPE=sqlite` the host/port/credentials are ignored; only `DB_DATABASE` (the file path) is used. The parent
+  directory is created automatically.
 
 <img src="assets/lifecycle.png" alt="life cycle" width="100%">
 

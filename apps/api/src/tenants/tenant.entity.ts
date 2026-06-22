@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity({ schema: 'public' })
+@Entity()
 export class Tenant {
   @PrimaryGeneratedColumn('uuid')
   id: string;

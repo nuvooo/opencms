@@ -25,11 +25,17 @@ services:
       HOST: 0.0.0.0
       PORT: 8000
       ALLOW_CORS_URL: http://localhost:3000
+      # Database engine: "postgres" (default), "mysql"/"mariadb" or "sqlite".
+      # For mysql, point DB_HOST/DB_PORT at a MySQL service and set DB_TYPE=mysql.
+      # For sqlite, set DB_TYPE=sqlite and DB_DATABASE to a file path (host/port
+      # are then ignored); mount a volume to persist it.
+      DB_TYPE: postgres
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: password
       DB_NAME: turborepo
+      DB_DATABASE: ./data/cms.sqlite
       DB_SSL: 'false'
       ACCESS_TOKEN_SECRET: bc63d848ca6e651b3b848bd96ef1ad1eb9b31afc9cad67ed5953efd023d02ffe
       ACCESS_TOKEN_EXPIRATION: 3d

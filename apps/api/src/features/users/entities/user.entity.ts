@@ -61,7 +61,7 @@ export class User extends Base {
   @Column({ type: 'timestamp', nullable: true })
   emailVerifiedAt: Date;
 
-  @Column({ type: 'enum', enum: roleSchema.options, default: 'USER' })
+  @Column({ type: 'simple-enum', enum: roleSchema.options, default: 'USER' })
   role: Role;
 
   /**

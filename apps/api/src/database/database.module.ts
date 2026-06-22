@@ -1,13 +1,16 @@
 /**
- * Database module for configuring TypeORM with PostgreSQL in a NestJS application.
+ * Database module for configuring TypeORM in a NestJS application.
  *
- * Uses asynchronous configuration to load database connection settings from environment variables via ConfigService.
- * Supports SSL, logging, and entity autoloading. Synchronization is disabled in production.
+ * The engine (PostgreSQL, MySQL/MariaDB or SQLite) is selected via the `DB_TYPE`
+ * environment variable. Connection settings are loaded from environment
+ * variables via ConfigService. Supports entity autoloading; synchronization is
+ * disabled in production.
  */
+import { buildConnectionOptions } from '@/common/database';
 import { Env } from '@/common/utils';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 /**
  * DatabaseModule class that imports TypeOrmModule with async configuration.
@@ -17,18 +20,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService<Env>) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST'),
-        port: config.get('DB_PORT'),
-        username: config.get('DB_USERNAME'),
-        password: config.get('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
-        ssl: config.get('DB_SSL') ? { rejectUnauthorized: false } : false,
-        autoLoadEntities: true,
-        synchronize: config.get('NODE_ENV') !== 'production',
-        retryAttempts: 0,
-      }),
+      useFactory: (config: ConfigService<Env>) =>
+        ({
+          ...buildConnectionOptions(config),
+          autoLoadEntities: true,
+          synchronize: config.get('NODE_ENV') !== 'production',
+          retryAttempts: 0,
+        }) as TypeOrmModuleOptions,
     }),
   ],
 })

@@ -27,6 +27,16 @@ type Step = 0 | 1 | 2 | 3 | 4;
 
 const STEPS = ['Welcome', 'Database', 'Admin', 'Review'] as const;
 
+const DB_ENGINES: {
+  value: 'postgres' | 'mysql' | 'sqlite';
+  label: string;
+  defaultPort?: string;
+}[] = [
+  { value: 'postgres', label: 'PostgreSQL', defaultPort: '5432' },
+  { value: 'mysql', label: 'MySQL', defaultPort: '3306' },
+  { value: 'sqlite', label: 'SQLite' },
+];
+
 const SetupWizard = () => {
   const router = useRouter();
   const [step, setStep] = useState<Step>(0);
@@ -38,11 +48,13 @@ const SetupWizard = () => {
       authUrl: 'http://localhost:3000',
     },
     database: {
+      type: 'postgres' as 'postgres' | 'mysql' | 'sqlite',
       host: 'localhost',
       port: '5432',
       username: 'postgres',
       password: '',
       name: '',
+      database: './data/cms.sqlite',
       ssl: false,
     },
     admin: {
@@ -144,107 +156,171 @@ const SetupWizard = () => {
               <Database className="size-5" /> Database settings
             </CardTitle>
             <CardDescription>
-              Connect the CMS to your PostgreSQL database.
+              Choose a database engine and connect the CMS to it.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Engine</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {DB_ENGINES.map((engine) => (
+                  <Button
+                    key={engine.value}
+                    type="button"
+                    variant={
+                      form.database.type === engine.value
+                        ? 'default'
+                        : 'outline'
+                    }
+                    onClick={() => {
+                      setDbValidated(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        database: {
+                          ...prev.database,
+                          type: engine.value,
+                          port: engine.defaultPort ?? prev.database.port,
+                        },
+                      }));
+                    }}
+                  >
+                    {engine.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {form.database.type === 'sqlite' ? (
               <div className="space-y-2">
-                <Label htmlFor="db-host">Host</Label>
+                <Label htmlFor="db-file">Database file path</Label>
                 <Input
-                  id="db-host"
-                  value={form.database.host}
+                  id="db-file"
+                  value={form.database.database}
                   onChange={(event) => {
                     setDbValidated(false);
                     setForm((prev) => ({
                       ...prev,
-                      database: { ...prev.database, host: event.target.value },
+                      database: {
+                        ...prev.database,
+                        database: event.target.value,
+                      },
                     }));
                   }}
                 />
+                <p className="text-xs text-muted-foreground">
+                  SQLite stores everything in a single file. No server required.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="db-port">Port</Label>
-                <Input
-                  id="db-port"
-                  value={form.database.port}
-                  onChange={(event) => {
-                    setDbValidated(false);
-                    setForm((prev) => ({
-                      ...prev,
-                      database: { ...prev.database, port: event.target.value },
-                    }));
-                  }}
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="db-host">Host</Label>
+                    <Input
+                      id="db-host"
+                      value={form.database.host}
+                      onChange={(event) => {
+                        setDbValidated(false);
+                        setForm((prev) => ({
+                          ...prev,
+                          database: {
+                            ...prev.database,
+                            host: event.target.value,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="db-port">Port</Label>
+                    <Input
+                      id="db-port"
+                      value={form.database.port}
+                      onChange={(event) => {
+                        setDbValidated(false);
+                        setForm((prev) => ({
+                          ...prev,
+                          database: {
+                            ...prev.database,
+                            port: event.target.value,
+                          },
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="db-username">Username</Label>
-              <Input
-                id="db-username"
-                value={form.database.username}
-                onChange={(event) => {
-                  setDbValidated(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    database: {
-                      ...prev.database,
-                      username: event.target.value,
-                    },
-                  }));
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="db-username">Username</Label>
+                  <Input
+                    id="db-username"
+                    value={form.database.username}
+                    onChange={(event) => {
+                      setDbValidated(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        database: {
+                          ...prev.database,
+                          username: event.target.value,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="db-password">Password</Label>
-              <Input
-                id="db-password"
-                type="password"
-                value={form.database.password}
-                onChange={(event) => {
-                  setDbValidated(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    database: {
-                      ...prev.database,
-                      password: event.target.value,
-                    },
-                  }));
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="db-password">Password</Label>
+                  <Input
+                    id="db-password"
+                    type="password"
+                    value={form.database.password}
+                    onChange={(event) => {
+                      setDbValidated(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        database: {
+                          ...prev.database,
+                          password: event.target.value,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="db-name">Database name</Label>
-              <Input
-                id="db-name"
-                value={form.database.name}
-                onChange={(event) => {
-                  setDbValidated(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    database: { ...prev.database, name: event.target.value },
-                  }));
-                }}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="db-name">Database name</Label>
+                  <Input
+                    id="db-name"
+                    value={form.database.name}
+                    onChange={(event) => {
+                      setDbValidated(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        database: {
+                          ...prev.database,
+                          name: event.target.value,
+                        },
+                      }));
+                    }}
+                  />
+                </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="db-ssl"
-                checked={form.database.ssl}
-                onCheckedChange={(checked: boolean) => {
-                  setDbValidated(false);
-                  setForm((prev) => ({
-                    ...prev,
-                    database: { ...prev.database, ssl: checked },
-                  }));
-                }}
-              />
-              <Label htmlFor="db-ssl">Use SSL</Label>
-            </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="db-ssl"
+                    checked={form.database.ssl}
+                    onCheckedChange={(checked: boolean) => {
+                      setDbValidated(false);
+                      setForm((prev) => ({
+                        ...prev,
+                        database: { ...prev.database, ssl: checked },
+                      }));
+                    }}
+                  />
+                  <Label htmlFor="db-ssl">Use SSL</Label>
+                </div>
+              </>
+            )}
 
             {dbValidated && (
               <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-500">
@@ -347,8 +423,9 @@ const SetupWizard = () => {
               <div className="flex justify-between py-1">
                 <span className="text-muted-foreground">Database</span>
                 <span className="font-medium">
-                  {form.database.host}:{form.database.port}/
-                  {form.database.name || '-'}
+                  {form.database.type === 'sqlite'
+                    ? `sqlite: ${form.database.database || '-'}`
+                    : `${form.database.type} · ${form.database.host}:${form.database.port}/${form.database.name || '-'}`}
                 </span>
               </div>
               <div className="flex justify-between py-1">

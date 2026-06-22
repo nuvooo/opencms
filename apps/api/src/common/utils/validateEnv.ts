@@ -22,11 +22,19 @@ export const EnvSchema = z.object({
     .max(128)
     .default('refresh-secret-12345'),
   REFRESH_TOKEN_EXPIRATION: z.string().min(1).max(365).default('7d'),
+  // Database engine selection. `postgres` (default), `mysql`/`mariadb` or
+  // `sqlite`. Host/port/credentials are ignored for SQLite, which only needs a
+  // file path (DB_DATABASE).
+  DB_TYPE: z
+    .enum(['postgres', 'mysql', 'mariadb', 'sqlite', 'better-sqlite3'])
+    .default('postgres'),
   DB_HOST: z.string().default('localhost'),
   DB_PORT: z.string().default('5432'),
   DB_USERNAME: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('password'),
   DB_NAME: z.string().default('cms'),
+  // SQLite database file path (used only when DB_TYPE=sqlite).
+  DB_DATABASE: z.string().default('./data/cms.sqlite'),
   DB_SSL: z
     .string()
     .default('false')
