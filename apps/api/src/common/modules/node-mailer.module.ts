@@ -14,15 +14,29 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService<Env>) => ({
-        transport: {
-          service: config.get('MAIL_HOST'),
-          auth: {
-            user: config.get('MAIL_USERNAME'),
-            pass: config.get('MAIL_PASSWORD'),
+      useFactory: (config: ConfigService<Env>) => {
+        const port = config.get('MAIL_PORT');
+        const username = config.get('MAIL_USERNAME');
+        const password = config.get('MAIL_PASSWORD');
+        const auth =
+          username && password ? { user: username, pass: password } : undefined;
+        if (port) {
+          return {
+            transport: {
+              host: config.get('MAIL_HOST'),
+              port,
+              ignoreTLS: config.get('MAIL_IGNORE_TLS') ?? true,
+              ...(auth ? { auth } : {}),
+            },
+          };
+        }
+        return {
+          transport: {
+            service: config.get('MAIL_HOST'),
+            ...(auth ? { auth } : {}),
           },
-        },
-      }),
+        };
+      },
     }),
   ],
 })

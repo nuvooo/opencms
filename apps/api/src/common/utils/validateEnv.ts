@@ -32,6 +32,11 @@ export const EnvSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   MAIL_HOST: z.string().default('localhost'),
+  MAIL_PORT: z.coerce.number().optional(),
+  MAIL_IGNORE_TLS: z
+    .string()
+    .transform((value) => value === 'true')
+    .optional(),
   MAIL_USERNAME: z.string().default(''),
   MAIL_PASSWORD: z.string().default(''),
   FILE_SYSTEM: z.enum(['s3', 'public']).default('public'),

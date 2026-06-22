@@ -1,0 +1,14 @@
+{
+  "id": "entries",
+  "name": "Entries",
+  "description": "Manage content entries.",
+  "version": "1.0.0",
+  "icon": "FileText",
+  "navItems": [
+    {
+      "path": "/admin/entries",
+      "label": "Entries",
+      "icon": "FileText"
+    }
+  ]
+}

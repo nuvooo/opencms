@@ -20,6 +20,7 @@ import {
   DeleteUserDto,
   ForgotPasswordDto,
   RefreshTokenDto,
+  ResendConfirmationDto,
   ResetPasswordDto,
   SignInUserDto,
   SignOutAllDeviceUserDto,
@@ -169,6 +170,7 @@ export class AuthService {
           const otp = manager.create(Otp, {
             otp: email_confirmation_otp,
             type: 'EMAIL_CONFIRMATION',
+            email: createUserDto.email,
             expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
           });
           await manager.insert(Otp, otp);
@@ -245,7 +247,11 @@ export class AuthService {
     });
     if (!user) throw new NotFoundException('User not found');
     const otp = await this.OtpRepository.findOne({
-      where: { otp: dto.token, type: 'EMAIL_CONFIRMATION' },
+      where: {
+        otp: dto.token,
+        type: 'EMAIL_CONFIRMATION',
+        email: dto.email,
+      },
     });
     if (!otp) throw new NotFoundException('Invalid confirmation code');
     if (otp.otp !== dto.token)
@@ -261,6 +267,46 @@ export class AuthService {
       subject: 'Confirmation Successful',
       html: ConfirmEmailSuccessMail({
         name: user.profile.name,
+      }),
+    });
+  }
+
+  /**
+   * Resends the email confirmation OTP to the user.
+   *
+   * @param {ResendConfirmationDto} dto - Resend confirmation DTO.
+   * @returns {Promise<void>}
+   * @throws {NotFoundException} If user is not found.
+   */
+  async resendEmailConfirmation(dto: ResendConfirmationDto): Promise<void> {
+    const user = await this.UserRepository.findOne({
+      where: { email: dto.email },
+      relations: ['profile'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.isEmailVerified)
+      throw new BadRequestException('Email already verified');
+
+    await this.OtpRepository.delete({
+      type: 'EMAIL_CONFIRMATION',
+      email: user.email,
+    });
+
+    const newOtp = await generateOTP();
+    const otp = this.OtpRepository.create({
+      otp: newOtp,
+      type: 'EMAIL_CONFIRMATION',
+      email: user.email,
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    });
+    await this.OtpRepository.save(otp);
+
+    await this.mailService.sendEmail({
+      to: [user.email],
+      subject: 'Confirm your email',
+      html: RegisterSuccessMail({
+        name: user.profile.name,
+        otp: newOtp,
       }),
     });
   }

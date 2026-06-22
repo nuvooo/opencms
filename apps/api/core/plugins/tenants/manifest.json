@@ -1,0 +1,14 @@
+{
+  "id": "tenants",
+  "name": "Tenants",
+  "description": "Manage multi-tenant environments.",
+  "version": "1.0.0",
+  "icon": "Building2",
+  "navItems": [
+    {
+      "path": "/admin/tenants",
+      "label": "Tenants",
+      "icon": "Building2"
+    }
+  ]
+}

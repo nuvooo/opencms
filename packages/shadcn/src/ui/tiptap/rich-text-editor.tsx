@@ -8,22 +8,33 @@ import { TableMenu } from '@repo/shadcn/tiptap/toolbars/table-menu';
 import { EditorContent, type Extension, useEditor } from '@tiptap/react';
 import './tiptap.css';
 
-export function RichTextEditor({ className }: { className?: string }) {
+interface RichTextEditorProps {
+  className?: string;
+  content?: string;
+  onChange?: (html: string) => void;
+  editable?: boolean;
+  minHeight?: string;
+}
+
+export function RichTextEditor({
+  className,
+  content = '',
+  onChange,
+  editable = true,
+  minHeight = '200px',
+}: RichTextEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: defaultExtensions as Extension[],
-    content: '',
+    content,
+    editable,
     editorProps: {
       attributes: {
         class: 'prose-article',
       },
     },
-    onUpdate: ({ editor }) => {
-      // do what you want to do with output
-      // Update stats
-      // saving as text/json/hmtml
-      // const text = editor.getHTML();
-      console.log(editor.getText());
+    onUpdate: ({ editor: ed }) => {
+      onChange?.(ed.getHTML());
     },
   });
 
@@ -37,7 +48,8 @@ export function RichTextEditor({ className }: { className?: string }) {
       <TipTapFloatingMenu editor={editor} />
       <EditorContent
         editor={editor}
-        className="min-h-[400px] min-w-full cursor-text p-3 md:p-6 no-scrollbar lg:p-12"
+        className="min-w-full cursor-text p-3 md:p-6 no-scrollbar lg:p-12"
+        style={{ minHeight }}
       />
     </div>
   );

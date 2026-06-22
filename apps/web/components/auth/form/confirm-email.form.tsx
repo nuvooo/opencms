@@ -1,7 +1,7 @@
 'use client';
 
 import LogoIcon from '@/components/logo-icon';
-import { confirmEmail } from '@/server/auth.server';
+import { confirmEmail, resendConfirmation } from '@/server/auth.server';
 import {
   Card,
   CardContent,
@@ -19,7 +19,9 @@ import { cn } from '@repo/shadcn/lib/utils';
 import SubmitButton from '@repo/shadcn/submit-button';
 import { useSession } from 'next-auth/react';
 import { useAction } from 'next-safe-action/hooks';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const RESEND_COOLDOWN = 60;
 
 const ConfirmEmailForm = () => {
   const session = useSession({
@@ -29,11 +31,33 @@ const ConfirmEmailForm = () => {
     email: session?.data?.user.email ?? 'unknown',
     token: '',
   });
+  const [cooldown, setCooldown] = useState(0);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const {
     executeAsync,
     isExecuting,
     result: { validationErrors, serverError },
   } = useAction(confirmEmail);
+  const { executeAsync: resendAsync, isExecuting: isResending } =
+    useAction(resendConfirmation);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleResend = async () => {
+    setResendMessage(null);
+    const result = await resendAsync({ email: formData.email });
+    if (result?.data) {
+      setCooldown(RESEND_COOLDOWN);
+      setResendMessage('Verification code resent to your email');
+    }
+  };
+
   return (
     <div className={cn('w-full flex flex-col gap-6')}>
       <Card className="max-w-xl w-full mx-auto">
@@ -101,6 +125,25 @@ const ConfirmEmailForm = () => {
                     <p className="text-xs text-red-500">
                       {validationErrors.token._errors[0]}
                     </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  {resendMessage && (
+                    <p className="text-xs text-green-500">{resendMessage}</p>
+                  )}
+                  {cooldown > 0 ? (
+                    <span className="text-muted-foreground">
+                      Resend in {cooldown}s
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isResending}
+                      onClick={handleResend}
+                      className="text-primary underline hover:no-underline disabled:opacity-50"
+                    >
+                      {isResending ? 'Sending...' : 'Resend email'}
+                    </button>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-5">

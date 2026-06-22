@@ -22,6 +22,11 @@ export class CreateEntryDto {
   @IsString()
   locale?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  locale_group_id?: string;
+
   @ApiPropertyOptional({
     enum: ['draft', 'published', 'archived'],
     default: 'draft',

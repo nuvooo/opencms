@@ -190,6 +190,9 @@ const Page = () => {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                    ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                     Content Type
                   </th>
                   {filterSlug !== 'all' &&
@@ -233,6 +236,9 @@ const Page = () => {
                       key={entry.id}
                       className="border-b last:border-0 hover:bg-muted/50"
                     >
+                      <td className="px-4 py-3 text-sm text-muted-foreground font-mono">
+                        {entry.id.substring(0, 8)}
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium">
                         {ct?.name || entry.content_type_slug}
                       </td>

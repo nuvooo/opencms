@@ -15,12 +15,23 @@ export const safeFetch = async <T extends ZodSchema<unknown>>(
   url: URL | RequestInfo,
   init?: RequestInit,
 ): Promise<[string | null, z.TypeOf<T>]> => {
-  const response: Response = await fetch(`${env.API_URL}${url}`, init);
+  let res: unknown;
+  let response: Response;
 
-  const res = await response.json();
+  try {
+    response = await fetch(`${env.API_URL}${url}`, init);
+    res = await response.json();
+  } catch (error) {
+    // Network failure (API unreachable) or non-JSON body: fetch/json throws.
+    // Return an error tuple so callers degrade gracefully instead of crashing
+    // (e.g. middleware would otherwise throw "fetch failed" on every request).
+    const message =
+      error instanceof Error ? error.message : 'Failed to reach API';
+    return [message, null];
+  }
 
   if (!response.ok) {
-    return [res.message, null];
+    return [(res as { message?: string })?.message ?? null, null];
   }
 
   const validateFields = schema.safeParse(res);

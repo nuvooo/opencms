@@ -27,6 +27,17 @@ export class Otp extends Base {
   otp: string;
 
   /**
+   * The email address this OTP is bound to.
+   *
+   * Binding OTPs to an address prevents a code issued for one user from
+   * confirming a different address, and lets resend/cleanup operations target
+   * only the relevant address instead of every pending OTP.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', nullable: true })
+  email?: string;
+
+  /**
    * The expiration date and time of the OTP.
    * @type {Date}
    */

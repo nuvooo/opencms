@@ -7,9 +7,11 @@
     "./*": "./*.ts",
     ".": "./index.ts"
   },
-  "devDependencies": {
-    "@repo/ts-config": "workspace:*",
+  "dependencies": {
     "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "@repo/ts-config": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

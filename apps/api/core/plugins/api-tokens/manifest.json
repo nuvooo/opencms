@@ -1,0 +1,14 @@
+{
+  "id": "api-tokens",
+  "name": "API Tokens",
+  "description": "Manage API tokens for programmatic access.",
+  "version": "1.0.0",
+  "icon": "KeyRound",
+  "navItems": [
+    {
+      "path": "/admin/api-tokens",
+      "label": "API Tokens",
+      "icon": "KeyRound"
+    }
+  ]
+}

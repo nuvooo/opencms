@@ -1,0 +1,14 @@
+{
+  "id": "plugins",
+  "name": "Plugins",
+  "description": "Manage system plugins and marketplace.",
+  "version": "1.0.0",
+  "icon": "Puzzle",
+  "navItems": [
+    {
+      "path": "/admin/plugins",
+      "label": "Plugins",
+      "icon": "Puzzle"
+    }
+  ]
+}

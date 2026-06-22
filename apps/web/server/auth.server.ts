@@ -13,6 +13,7 @@ import {
   GetSessionsSchema,
   RefreshToken,
   RefreshTokenSchema,
+  ResendConfirmationSchema,
   ResetPasswordSchema,
   Session,
   SignIn,
@@ -342,6 +343,30 @@ export const confirmEmail = safeAction
       },
     });
     redirect(`/`);
+  });
+
+/**
+ * Resend email confirmation OTP
+ * @schema ResendConfirmationSchema
+ */
+export const resendConfirmation = safeAction
+  .schema(ResendConfirmationSchema)
+  .action(async ({ parsedInput }) => {
+    const [error] = await safeFetch(
+      DefaultReturnSchema,
+      '/auth/resend-confirmation',
+      {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(parsedInput),
+      },
+    );
+    if (error) throw new Error(error);
+    return { message: 'Confirmation email resent successfully' };
   });
 
 /**

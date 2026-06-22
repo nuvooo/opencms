@@ -14,6 +14,7 @@ import {
   DeleteUserDto,
   ForgotPasswordDto,
   RefreshTokenDto,
+  ResendConfirmationDto,
   ResetPasswordDto,
   SignInUserDto,
   SignOutAllDeviceUserDto,
@@ -27,6 +28,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -144,6 +146,21 @@ export class AuthController {
   }
 
   /**
+   * Resends the email confirmation OTP.
+   *
+   * @param {ResendConfirmationDto} dto - Resend confirmation data.
+   * @returns {Promise<MessageResponse>} Response message.
+   */
+  @Public()
+  @Post('resend-confirmation')
+  async resendConfirmation(
+    @Body() dto: ResendConfirmationDto,
+  ): Promise<MessageResponse> {
+    await this.authService.resendEmailConfirmation(dto);
+    return { message: 'Confirmation email resent successfully' };
+  }
+
+  /**
    * Sends a password reset email.
    *
    * @param {ForgotPasswordDto} forgotPasswordDto - Data for password reset request.
@@ -212,6 +229,11 @@ export class AuthController {
    * @param {DeleteUserDto} deleteUserDto - Data for deleting the user.
    * @returns {Promise<MessageResponse>} Response message.
    */
+  @Get('me')
+  async me(@Req() req: any) {
+    return { data: req.user };
+  }
+
   @Delete('delete-account')
   async deleteUser(
     @Body() deleteUserDto: DeleteUserDto,

@@ -1,5 +1,6 @@
 'use client';
 
+import ComboboxSelect from '@/components/admin/combobox-select';
 import FieldOptionsDialog from '@/components/admin/field-options-dialog';
 import FieldTypePicker from '@/components/admin/field-type-picker';
 import {
@@ -237,9 +238,9 @@ const Page = () => {
               <Sortable
                 value={fields.map((_, i) => String(i))}
                 onValueChange={(value) => {
-                  const reordered = value.map(
-                    (id: string) => fields[Number(id)],
-                  );
+                  const reordered = value
+                    .map((id: string) => fields[Number(id)])
+                    .filter((f): f is ContentTypeField => f != null);
                   setFields(reordered);
                 }}
               >
@@ -313,57 +314,52 @@ const Page = () => {
                               <Label className="text-xs">
                                 Related Content Type
                               </Label>
-                              <select
-                                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                              <ComboboxSelect
                                 value={field.options?.relatedType || ''}
-                                onChange={(
-                                  e: ChangeEvent<HTMLSelectElement>,
-                                ) => {
+                                onChange={(val) => {
                                   const opts = {
                                     ...field.options,
-                                    relatedType: e.target.value || undefined,
+                                    relatedType: val || undefined,
                                     displayField: undefined,
                                   };
                                   updateField(index, 'options', opts);
                                 }}
-                              >
-                                <option value="">Select...</option>
-                                {availableCts
+                                options={availableCts
                                   .filter((ct) => ct.slug !== slug)
-                                  .map((ct) => (
-                                    <option key={ct.id} value={ct.slug}>
-                                      {ct.name} ({ct.slug})
-                                    </option>
-                                  ))}
-                              </select>
+                                  .map((ct) => ({
+                                    value: ct.slug,
+                                    label: `${ct.name} (${ct.slug})`,
+                                  }))}
+                                placeholder="Select..."
+                                searchPlaceholder="Search content types..."
+                              />
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Display Field</Label>
-                              <select
-                                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                              <ComboboxSelect
                                 value={field.options?.displayField || ''}
-                                onChange={(
-                                  e: ChangeEvent<HTMLSelectElement>,
-                                ) => {
+                                onChange={(val) => {
                                   const opts = {
                                     ...field.options,
-                                    displayField: e.target.value || undefined,
+                                    displayField: val || undefined,
                                   };
                                   updateField(index, 'options', opts);
                                 }}
-                              >
-                                <option value="">Select...</option>
-                                {availableCts
-                                  .find(
-                                    (ct) =>
-                                      ct.slug === field.options?.relatedType,
-                                  )
-                                  ?.fields.map((f) => (
-                                    <option key={f.name} value={f.name}>
-                                      {f.label || f.name}
-                                    </option>
-                                  ))}
-                              </select>
+                                options={
+                                  availableCts
+                                    .find(
+                                      (ct) =>
+                                        ct.slug === field.options?.relatedType,
+                                    )
+                                    ?.fields.map((f) => ({
+                                      value: f.name,
+                                      label: f.label || f.name,
+                                    })) || []
+                                }
+                                placeholder="Select..."
+                                searchPlaceholder="Search fields..."
+                                disabled={!field.options?.relatedType}
+                              />
                             </div>
                           </div>
                         )}
@@ -371,24 +367,25 @@ const Page = () => {
                         {field.type === 'slug' && (
                           <div className="pl-8 space-y-1">
                             <Label className="text-xs">Generate From</Label>
-                            <select
-                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                            <ComboboxSelect
                               value={field.options?.slugFrom || ''}
-                              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                              onChange={(val) => {
                                 const opts = {
                                   ...field.options,
-                                  slugFrom: e.target.value || undefined,
+                                  slugFrom: val || undefined,
                                 };
                                 updateField(index, 'options', opts);
                               }}
-                            >
-                              <option value="">None</option>
-                              {fieldNames.map((name) => (
-                                <option key={name} value={name}>
-                                  {name}
-                                </option>
-                              ))}
-                            </select>
+                              options={[
+                                { value: '', label: 'None' },
+                                ...fieldNames.map((name) => ({
+                                  value: name,
+                                  label: name,
+                                })),
+                              ]}
+                              placeholder="None"
+                              searchPlaceholder="Search fields..."
+                            />
                           </div>
                         )}
 

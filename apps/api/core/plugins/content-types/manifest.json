@@ -1,0 +1,14 @@
+{
+  "id": "content-types",
+  "name": "Content Types",
+  "description": "Define content schemas.",
+  "version": "1.0.0",
+  "icon": "FileType",
+  "navItems": [
+    {
+      "path": "/admin/content-types",
+      "label": "Content Types",
+      "icon": "FileType"
+    }
+  ]
+}

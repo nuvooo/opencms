@@ -10,12 +10,13 @@ export class EntriesService {
   async create(schemaName: string, dto: CreateEntryDto) {
     const rows: any[] = await this.tenantDb.withTenantDb(schemaName, (query) =>
       query(
-        `INSERT INTO "entry" (id, content_type_slug, fields, locale, status) VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *`,
+        `INSERT INTO "entry" (id, content_type_slug, fields, locale, status, locale_group_id) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING *`,
         [
           dto.content_type_slug,
           JSON.stringify(dto.fields),
           dto.locale || 'en',
           dto.status || 'draft',
+          dto.locale_group_id || null,
         ],
       ),
     );
@@ -29,6 +30,7 @@ export class EntriesService {
       content_type_slug?: string;
       locale?: string;
       status?: string;
+      locale_group_id?: string;
     },
   ) {
     const conditions: string[] = [];
@@ -48,6 +50,11 @@ export class EntriesService {
     if (queryParams.status) {
       conditions.push(`"status" = $${paramIndex++}`);
       values.push(queryParams.status);
+    }
+
+    if (queryParams.locale_group_id) {
+      conditions.push(`"locale_group_id" = $${paramIndex++}`);
+      values.push(queryParams.locale_group_id);
     }
 
     const whereClause =

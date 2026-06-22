@@ -1,15 +1,9 @@
 'use client';
 
+import ComboboxSelect from '@/components/admin/combobox-select';
 import { getEntries } from '@/server/entry.server';
 import type { Entry } from '@/types/entry.type';
 import { X } from '@repo/shadcn/lucide';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@repo/shadcn/select';
 import { useEffect, useState } from 'react';
 
 interface RelationPickerProps {
@@ -22,8 +16,10 @@ interface RelationPickerProps {
 }
 
 function displayLabel(entry: Entry, displayField?: string): string {
-  if (displayField) return String(entry.fields?.[displayField] || '');
-  return String(entry.fields?.title || entry.fields?.name || entry.id);
+  const label = displayField
+    ? String(entry.fields?.[displayField] || '')
+    : String(entry.fields?.title || entry.fields?.name || '');
+  return `#${entry.id.substring(0, 8)} ${label}`.trim();
 }
 
 export default function RelationPicker({
@@ -60,6 +56,8 @@ export default function RelationPicker({
     }
   };
 
+  const selected = entries.filter((e) => selectedIds.includes(e.id));
+
   const available = entries.filter(
     (e) => !selectedIds.includes(e.id) || !multiple,
   );
@@ -68,52 +66,49 @@ export default function RelationPicker({
     <div className="space-y-2">
       {multiple && selectedIds.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {selectedIds.map((id) => {
-            const entry = entries.find((e) => e.id === id);
-            return (
-              <div
-                key={id}
-                className="flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-1 text-xs"
+          {selected.map((entry) => (
+            <div
+              key={entry.id}
+              className="flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-1 text-xs"
+            >
+              <span>{displayLabel(entry, displayField)}</span>
+              <button
+                type="button"
+                onClick={() => removeEntry(entry.id)}
+                className="text-muted-foreground hover:text-foreground"
               >
-                <span>{entry ? displayLabel(entry, displayField) : id}</span>
-                <button
-                  type="button"
-                  onClick={() => removeEntry(id)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            );
-          })}
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
-      <Select
-        value={multiple ? '_add' : (value as string) || '_none'}
-        onValueChange={(val) => {
-          if (val !== '_none' && val !== '_add') addEntry(val);
+      <ComboboxSelect
+        value={multiple ? '' : (value as string) || ''}
+        onChange={(val) => {
+          if (val) addEntry(val);
         }}
-      >
-        <SelectTrigger>
-          <SelectValue
-            placeholder={
-              multiple ? 'Add related entry...' : `Select ${relatedType}...`
-            }
-          />
-        </SelectTrigger>
-        <SelectContent>
-          {(multiple ? available : entries).map((entry) => (
-            <SelectItem key={entry.id} value={entry.id}>
-              {displayLabel(entry, displayField)}
-            </SelectItem>
-          ))}
-          {entries.length === 0 && (
-            <SelectItem value="_none" disabled>
-              No entries found
-            </SelectItem>
-          )}
-        </SelectContent>
-      </Select>
+        options={
+          multiple
+            ? available.map((e) => ({
+                value: e.id,
+                label: displayLabel(e, displayField),
+              }))
+            : entries.map((e) => ({
+                value: e.id,
+                label: displayLabel(e, displayField),
+              }))
+        }
+        placeholder={
+          entries.length === 0
+            ? 'No entries found'
+            : multiple
+              ? 'Add related entry...'
+              : `Select ${relatedType}...`
+        }
+        searchPlaceholder="Search entries..."
+        emptyText="No entries found."
+      />
     </div>
   );
 }

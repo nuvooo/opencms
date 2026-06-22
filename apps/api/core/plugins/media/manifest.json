@@ -1,0 +1,14 @@
+{
+  "id": "media",
+  "name": "Media",
+  "description": "Upload and manage media files.",
+  "version": "1.0.0",
+  "icon": "ImageIcon",
+  "navItems": [
+    {
+      "path": "/admin/media",
+      "label": "Media",
+      "icon": "ImageIcon"
+    }
+  ]
+}

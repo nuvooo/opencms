@@ -1,6 +1,7 @@
 import { roleSchema, type Role } from '@/common/constants';
 import { Base } from '@/common/entities';
 import { hashString } from '@/common/utils';
+import { ApiToken } from '@/features/api-token/entities/api-token.entity';
 import { Session } from '@/features/auth/entities/session.entity';
 import { Profile } from '@/features/users/entities/profile.entity';
 import {
@@ -80,6 +81,11 @@ export class User extends Base {
     cascade: true,
   })
   profile: Relation<Profile>;
+
+  @OneToMany(() => ApiToken, (token) => token.user, {
+    cascade: true,
+  })
+  apiTokens: Relation<ApiToken[]>;
 
   /**
    * Generates username and hashes password before inserting a new user.

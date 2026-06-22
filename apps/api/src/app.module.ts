@@ -13,6 +13,7 @@ import { MediaModule } from '@/features/media/media.module';
 import { PluginModule } from '@/features/plugin/plugin.module';
 import { SetupModule } from '@/features/setup/setup.module';
 import { UsersModule } from '@/features/users/users.module';
+import { LocaleModule } from '@/locale/locale.module';
 import { RelationModule } from '@/relation/relation.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -21,6 +22,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommonModule } from './common/common.module';
+import { ApiTokenModule } from './features/api-token/api-token.module';
 import { AuthModule } from './features/auth/auth.module';
 import { HealthModule } from './features/health/health.module';
 import { MailModule } from './features/mail/mail.module';
@@ -66,8 +68,10 @@ import { TenantsModule } from './tenants/tenants.module';
     MailModule,
     HealthModule,
     FileModule,
+    ApiTokenModule,
     ContentTypesModule,
     EntriesModule,
+    LocaleModule,
     RelationModule,
     TenantsModule,
     MediaModule,

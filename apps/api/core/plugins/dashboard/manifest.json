@@ -1,0 +1,14 @@
+{
+  "id": "dashboard",
+  "name": "Dashboard",
+  "description": "CMS overview and statistics.",
+  "version": "1.0.0",
+  "icon": "LayoutDashboard",
+  "navItems": [
+    {
+      "path": "/admin",
+      "label": "Dashboard",
+      "icon": "LayoutDashboard"
+    }
+  ]
+}

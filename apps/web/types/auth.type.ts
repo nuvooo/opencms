@@ -149,6 +149,13 @@ export const RefreshTokenSchema = z.object({
 export type RefreshToken = z.infer<typeof RefreshTokenSchema>;
 
 /**
+ * Schema for resending email confirmation OTP.
+ */
+export const ResendConfirmationSchema = z.object({
+  email: z.string().email(),
+});
+
+/**
  * Schema for deleting a user account.
  */
 export const DeleteAccountSchema = z.object({

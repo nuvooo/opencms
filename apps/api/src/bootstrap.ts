@@ -37,6 +37,9 @@ export const bootstrap = async (app: NestFastifyApplication): Promise<void> => {
     dotfiles: 'deny',
   });
 
+  // Set global API prefix
+  app.setGlobalPrefix('api');
+
   // Enable CORS with allowed origins and methods
   app.enableCors({
     credentials: true,

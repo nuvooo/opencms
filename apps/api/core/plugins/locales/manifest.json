@@ -1,0 +1,14 @@
+{
+  "id": "locales",
+  "name": "Locales",
+  "description": "Manage languages.",
+  "version": "1.0.0",
+  "icon": "Languages",
+  "navItems": [
+    {
+      "path": "/admin/locales",
+      "label": "Locales",
+      "icon": "Languages"
+    }
+  ]
+}
