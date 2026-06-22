@@ -15,8 +15,23 @@ const rescanPluginsMock = vi.fn();
 const uninstallPluginMock = vi.fn();
 const togglePluginMock = vi.fn();
 
+const { setRegistryPluginsMock } = vi.hoisted(() => ({
+  setRegistryPluginsMock: vi.fn(),
+}));
+
 vi.mock('@/lib/plugin/icons', () => ({
   getIcon: () => <span>icon</span>,
+}));
+
+// The page writes plugin updates through to the shared registry so the sidebar
+// nav reacts without a refresh.
+vi.mock('@/lib/plugin/registry', () => ({
+  usePluginRegistry: () => ({
+    plugins: [],
+    navItems: [],
+    registerPlugin: vi.fn(),
+    setPlugins: setRegistryPluginsMock,
+  }),
 }));
 
 vi.mock('@/server/plugin.server', () => ({
@@ -85,6 +100,36 @@ describe('admin plugins page', () => {
         .getByRole('switch')
         .getAttribute('aria-checked'),
     ).toBe('true');
+  });
+
+  it('writes a toggle through to the shared registry so the nav updates without a refresh', async () => {
+    const plugin = {
+      id: 'media',
+      name: 'Media',
+      description: 'desc',
+      version: '1.0.0',
+      icon: 'box',
+      source: 'core',
+      isSystem: true,
+      enabled: true,
+      protected: false,
+      navItems: [],
+    };
+    getPluginsMock.mockResolvedValue([plugin]);
+    const toggled = [{ ...plugin, enabled: false }];
+    togglePluginMock.mockResolvedValue(toggled);
+
+    render(<Page />);
+
+    const title = await screen.findByText('Media');
+    const card = title.closest('[data-slot="card"]') as HTMLElement;
+    fireEvent.click(within(card).getByRole('switch'));
+
+    await waitFor(() => {
+      expect(togglePluginMock).toHaveBeenCalledWith('media', false);
+    });
+    // The registry receives the updated list (initial load + the toggle result).
+    expect(setRegistryPluginsMock).toHaveBeenCalledWith(toggled);
   });
 
   it('disables the toggle for a protected core plugin', async () => {
