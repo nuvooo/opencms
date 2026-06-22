@@ -34,6 +34,7 @@ declare module 'next-auth' {
     id: string;
     email: string;
     username: string;
+    role: 'ADMIN' | 'USER';
     isEmailVerified: boolean;
     emailVerifiedAt?: Date | null;
     createdAt: Date;

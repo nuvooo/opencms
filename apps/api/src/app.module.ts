@@ -11,6 +11,7 @@ import { EntriesModule } from '@/entries/entries.module';
 import { FileModule } from '@/features/file/file.module';
 import { MediaModule } from '@/features/media/media.module';
 import { PluginModule } from '@/features/plugin/plugin.module';
+import { SetupModule } from '@/features/setup/setup.module';
 import { UsersModule } from '@/features/users/users.module';
 import { RelationModule } from '@/relation/relation.module';
 import { Module } from '@nestjs/common';
@@ -71,6 +72,7 @@ import { TenantsModule } from './tenants/tenants.module';
     TenantsModule,
     MediaModule,
     PluginModule,
+    SetupModule,
   ],
 })
 export class AppModule {}

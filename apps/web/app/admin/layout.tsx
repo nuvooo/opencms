@@ -4,9 +4,13 @@ import PluginLoader from '@/components/admin/plugin-loader';
 import TenantInit from '@/components/admin/tenant-init';
 import TopBar from '@/components/top-bar';
 import { PluginProvider } from '@/lib/plugin/registry';
+import { getSetupStatus } from '@/server/setup.server';
 import { redirect } from 'next/navigation';
 
 const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
+  const status = await getSetupStatus();
+  if (!status.initialized) redirect('/setup');
+
   const session = await auth();
   if (!session) redirect('/auth/sign-in');
 

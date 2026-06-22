@@ -1,3 +1,4 @@
+import { roleSchema, type Role } from '@/common/constants';
 import { Base } from '@/common/entities';
 import { hashString } from '@/common/utils';
 import { Session } from '@/features/auth/entities/session.entity';
@@ -58,6 +59,9 @@ export class User extends Base {
    */
   @Column({ type: 'timestamp', nullable: true })
   emailVerifiedAt: Date;
+
+  @Column({ type: 'enum', enum: roleSchema.options, default: 'USER' })
+  role: Role;
 
   /**
    * Sessions associated with the user.

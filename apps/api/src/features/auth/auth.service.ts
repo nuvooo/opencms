@@ -97,6 +97,7 @@ export class AuthService {
           username: user.username,
           email: user.email,
           id: user.id,
+          role: user.role,
         },
         {
           secret: this.config.get('ACCESS_TOKEN_SECRET'),
@@ -108,6 +109,7 @@ export class AuthService {
           username: user.username,
           email: user.email,
           id: user.id,
+          role: user.role,
         },
         {
           secret: this.config.get('REFRESH_TOKEN_SECRET'),
@@ -152,7 +154,10 @@ export class AuthService {
     try {
       const result = await this.transactionService.runInTransaction(
         async (manager) => {
-          const user = manager.create(User, createUserDto);
+          const user = manager.create(User, {
+            ...createUserDto,
+            role: 'USER',
+          });
           await manager.insert(User, user);
 
           const profile = manager.create(Profile, {

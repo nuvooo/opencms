@@ -7,6 +7,7 @@ export const UserSchema = z.object({
   id: z.string().min(1),
   email: z.string().email(),
   username: z.string().min(1),
+  role: z.enum(['ADMIN', 'USER']),
   isEmailVerified: z.boolean(),
   emailVerifiedAt: z.coerce.date().nullish(),
   createdAt: z.coerce.date(),

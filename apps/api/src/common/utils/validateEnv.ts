@@ -4,26 +4,37 @@ import { z } from 'zod';
  * Zod schema for validating and typing environment variables.
  */
 export const EnvSchema = z.object({
-  HOST: z.string(),
+  HOST: z.string().default('localhost'),
   NODE_ENV: z
     .enum(['development', 'production', 'test', 'provision'])
     .default('development'),
-  PORT: z.coerce.number(),
-  ALLOW_CORS_URL: z.string().url(),
-  ACCESS_TOKEN_SECRET: z.string().min(10).max(128),
-  ACCESS_TOKEN_EXPIRATION: z.string().min(1).max(60),
-  REFRESH_TOKEN_SECRET: z.string().min(10).max(128),
-  REFRESH_TOKEN_EXPIRATION: z.string().min(1).max(365),
-  DB_HOST: z.string(),
-  DB_PORT: z.string(),
-  DB_USERNAME: z.string(),
-  DB_PASSWORD: z.string(),
-  DB_NAME: z.string(),
-  DB_SSL: z.string().transform((value) => value === 'true'),
-  MAIL_HOST: z.string(),
-  MAIL_USERNAME: z.string(),
-  MAIL_PASSWORD: z.string(),
-  FILE_SYSTEM: z.enum(['s3', 'public']),
+  PORT: z.coerce.number().default(8000),
+  ALLOW_CORS_URL: z.string().url().default('http://localhost:3000'),
+  ACCESS_TOKEN_SECRET: z
+    .string()
+    .min(10)
+    .max(128)
+    .default('access-secret-12345'),
+  ACCESS_TOKEN_EXPIRATION: z.string().min(1).max(60).default('15m'),
+  REFRESH_TOKEN_SECRET: z
+    .string()
+    .min(10)
+    .max(128)
+    .default('refresh-secret-12345'),
+  REFRESH_TOKEN_EXPIRATION: z.string().min(1).max(365).default('7d'),
+  DB_HOST: z.string().default('localhost'),
+  DB_PORT: z.string().default('5432'),
+  DB_USERNAME: z.string().default('postgres'),
+  DB_PASSWORD: z.string().default('password'),
+  DB_NAME: z.string().default('cms'),
+  DB_SSL: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
+  MAIL_HOST: z.string().default('localhost'),
+  MAIL_USERNAME: z.string().default(''),
+  MAIL_PASSWORD: z.string().default(''),
+  FILE_SYSTEM: z.enum(['s3', 'public']).default('public'),
   FILE_MAX_SIZE: z.coerce.number().default(20971520),
   AWS_REGION: z.string().default(''),
   AWS_ACCESS_KEY_ID: z.string().default(''),
