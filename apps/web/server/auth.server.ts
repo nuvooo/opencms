@@ -27,6 +27,7 @@ import { AuthError, User } from 'next-auth';
 import { revalidateTag } from 'next/cache';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { redirect } from 'next/navigation';
+import { authHeaders } from './auth-headers';
 
 /**
  * Parses and sends credential-based login with device info to backend.
@@ -283,9 +284,7 @@ export const getSessionById = async () => {
         tags: ['next-auth-session'],
         revalidate: 86400, // 24 hours
       },
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      },
+      headers: authHeaders(session),
     },
   );
 };
@@ -304,9 +303,7 @@ export const getAuthSessions = async (): Promise<Session[]> => {
         tags: ['nest-auth-sessions'],
         revalidate: 3600, // 1 hour
       },
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      },
+      headers: authHeaders(session),
     },
   );
 

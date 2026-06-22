@@ -3,6 +3,7 @@
 import { auth } from '@/auth';
 import { safeFetch } from '@/lib/safeFetch';
 import { z } from 'zod';
+import { authHeaders } from './auth-headers';
 import {
   GetPluginsSchema,
   PluginDescriptorSchema,
@@ -13,9 +14,7 @@ export const getPlugins = async (): Promise<PluginDescriptor[]> => {
   const session = await auth();
   const [error, data] = await safeFetch(GetPluginsSchema, '/plugins', {
     cache: 'no-store',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-    },
+    headers: authHeaders(session),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -35,9 +34,7 @@ export const installPlugin = async (
     {
       method: 'POST',
       body: formData,
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      },
+      headers: authHeaders(session),
     },
   );
   if (error) throw new Error(error);
@@ -51,9 +48,7 @@ export const rescanPlugins = async (): Promise<PluginDescriptor[]> => {
     '/plugins/rescan',
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      },
+      headers: authHeaders(session),
     },
   );
   if (error) throw new Error(error);
@@ -69,9 +64,7 @@ export const uninstallPlugin = async (
     `/plugins/${id}`,
     {
       method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      },
+      headers: authHeaders(session),
     },
   );
   if (error) throw new Error(error);

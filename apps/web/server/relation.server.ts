@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { safeFetch } from '@/lib/safeFetch';
 import { DefaultReturnSchema } from '@/types/default.type';
 import { z } from 'zod';
+import { authHeaders } from './auth-headers';
 
 const GetRelationsSchema = z.object({
   data: z.array(
@@ -27,11 +28,7 @@ export const setRelations = async (
     `/relations/${entryId}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId, json: true }),
       body: JSON.stringify({ fieldName, relatedEntryIds }),
     },
   );
@@ -49,10 +46,7 @@ export const getRelations = async (
     `/relations/${entryId}/${fieldName}`,
     {
       cache: 'no-store',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId }),
     },
   );
   if (error) throw new Error(error);

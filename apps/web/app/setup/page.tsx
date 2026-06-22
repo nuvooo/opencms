@@ -10,7 +10,7 @@ const SetupPage = async () => {
   }
 
   return (
-    <div className="container py-10">
+    <div className="flex min-h-screen items-start justify-center px-4 py-12 sm:py-20">
       <SetupWizard />
     </div>
   );

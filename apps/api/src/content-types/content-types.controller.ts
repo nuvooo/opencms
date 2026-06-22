@@ -10,13 +10,18 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { ContentTypesService } from './content-types.service';
 import { CreateContentTypeDto } from './dto/create-content-type.dto';
 import { UpdateContentTypeDto } from './dto/update-content-type.dto';
 
 @ApiTags('content-types')
 @ApiBearerAuth()
+@ApiHeader({
+  name: 'x-tenant-id',
+  description: 'Active tenant id (required for tenant-scoped routes)',
+  required: true,
+})
 @UseInterceptors(TenantInterceptor)
 @Controller('content-types')
 export class ContentTypesController {

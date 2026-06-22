@@ -8,12 +8,17 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { SetRelationsDto } from './dto/set-relations.dto';
 import { RelationService } from './relation.service';
 
 @ApiTags('relations')
 @ApiBearerAuth()
+@ApiHeader({
+  name: 'x-tenant-id',
+  description: 'Active tenant id (required for tenant-scoped routes)',
+  required: true,
+})
 @UseInterceptors(TenantInterceptor)
 @Controller('relations')
 export class RelationController {

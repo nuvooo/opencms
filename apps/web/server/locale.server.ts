@@ -8,15 +8,13 @@ import {
   GetLocalesSchema,
   type Locale,
 } from '@/types/locale.type';
+import { authHeaders } from './auth-headers';
 
 export const getLocales = async (tenantId: string): Promise<Locale[]> => {
   const session = await auth();
   const [error, data] = await safeFetch(GetLocalesSchema, '/locales', {
     cache: 'no-store',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -30,11 +28,7 @@ export const createLocale = async (
   const [error, data] = await safeFetch(GetLocaleSchema, '/locales', {
     method: 'POST',
     body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-      'Content-Type': 'application/json',
-    },
+    headers: authHeaders(session, { tenantId, json: true }),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -49,11 +43,7 @@ export const updateLocale = async (
   const [error, data] = await safeFetch(GetLocaleSchema, `/locales/${id}`, {
     method: 'PUT',
     body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-      'Content-Type': 'application/json',
-    },
+    headers: authHeaders(session, { tenantId, json: true }),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -66,10 +56,7 @@ export const deleteLocale = async (
   const session = await auth();
   const [error] = await safeFetch(DefaultReturnSchema, `/locales/${id}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
 };

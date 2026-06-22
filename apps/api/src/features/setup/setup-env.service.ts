@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import {
   copyFileSync,
   existsSync,
@@ -11,7 +11,9 @@ import { SETUP_ENV_ALLOWLIST, type SetupEnvKey } from './setup.constants';
 
 @Injectable()
 export class SetupEnvService {
-  constructor(private readonly envPath: string = join(process.cwd(), '.env')) {}
+  constructor(
+    @Optional() private readonly envPath: string = join(process.cwd(), '.env'),
+  ) {}
 
   writeAllowlisted(values: Partial<Record<SetupEnvKey, string>>): void {
     const current = existsSync(this.envPath)

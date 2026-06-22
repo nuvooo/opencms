@@ -31,6 +31,8 @@ export class EntriesService {
       locale?: string;
       status?: string;
       locale_group_id?: string;
+      limit?: number;
+      offset?: number;
     },
   ) {
     const conditions: string[] = [];
@@ -60,9 +62,16 @@ export class EntriesService {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+    // Bound the result set so a large tenant can't return its entire entry
+    // table on a single list call. Default 50, hard cap 100.
+    const limit = Math.min(Math.max(queryParams.limit ?? 50, 1), 100);
+    const offset = Math.max(queryParams.offset ?? 0, 0);
+    const limitClause = `LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    values.push(limit, offset);
+
     return this.tenantDb.withTenantDb<any[]>(schemaName, (query) =>
       query(
-        `SELECT * FROM "entry" ${whereClause} ORDER BY created_at DESC`,
+        `SELECT * FROM "entry" ${whereClause} ORDER BY created_at DESC ${limitClause}`,
         values,
       ),
     );

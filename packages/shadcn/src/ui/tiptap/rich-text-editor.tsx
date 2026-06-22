@@ -6,6 +6,7 @@ import { CodeLanguage } from '@repo/shadcn/tiptap/toolbars/code-language';
 import { EditorToolbar } from '@repo/shadcn/tiptap/toolbars/editor-toolbar';
 import { TableMenu } from '@repo/shadcn/tiptap/toolbars/table-menu';
 import { EditorContent, type Extension, useEditor } from '@tiptap/react';
+import { useEffect } from 'react';
 import './tiptap.css';
 
 interface RichTextEditorProps {
@@ -37,6 +38,17 @@ export function RichTextEditor({
       onChange?.(ed.getHTML());
     },
   });
+
+  // Keep the editor in sync when the `content` prop arrives or changes after
+  // mount (e.g. async-loaded entries). Without this the editor stays empty and
+  // saving would overwrite the stored value with blank HTML. `false` keeps
+  // setContent from firing onUpdate, avoiding a feedback loop.
+  useEffect(() => {
+    if (!editor) return;
+    if (content !== editor.getHTML()) {
+      editor.commands.setContent(content, false);
+    }
+  }, [content, editor]);
 
   if (!editor) return null;
 

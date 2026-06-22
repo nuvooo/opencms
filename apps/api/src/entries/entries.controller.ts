@@ -11,13 +11,18 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateEntryDto } from './dto/create-entry.dto';
 import { UpdateEntryDto } from './dto/update-entry.dto';
 import { EntriesService } from './entries.service';
 
 @ApiTags('entries')
 @ApiBearerAuth()
+@ApiHeader({
+  name: 'x-tenant-id',
+  description: 'Active tenant id (required for tenant-scoped routes)',
+  required: true,
+})
 @UseInterceptors(TenantInterceptor)
 @Controller('entries')
 export class EntriesController {
@@ -33,18 +38,24 @@ export class EntriesController {
   @ApiQuery({ name: 'content_type_slug', required: false })
   @ApiQuery({ name: 'locale', required: false })
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
   async findAll(
     @Req() req: any,
     @Query('content_type_slug') content_type_slug?: string,
     @Query('locale') locale?: string,
     @Query('status') status?: string,
     @Query('locale_group_id') locale_group_id?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     const data = await this.entriesService.findAll(req.tenant.schemaName, {
       content_type_slug,
       locale,
       status,
       locale_group_id,
+      limit: limit !== undefined ? Number(limit) : undefined,
+      offset: offset !== undefined ? Number(offset) : undefined,
     });
     return { data };
   }

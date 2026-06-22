@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
@@ -33,6 +34,7 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('TenantDb DataSource initialized');
 
       await this.migrateExistingTenants();
+      await this.migratePublicSchema();
     } catch (error) {
       this.logger.error(
         `Failed to initialize TenantDb DataSource: ${(error as Error).message}`,
@@ -93,6 +95,26 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
       }
     } catch {
       this.logger.warn('No tenants table found yet — skipping migration');
+    }
+  }
+
+  /**
+   * Idempotent migrations for tables in the shared public schema.
+   *
+   * Production runs with TypeORM `synchronize: false`, so additive column
+   * changes must be applied explicitly here (mirrors the public.tenant ALTER in
+   * migrateExistingTenants). `IF EXISTS`/`IF NOT EXISTS` keep it safe to run on
+   * every boot and on fresh databases.
+   */
+  private async migratePublicSchema(): Promise<void> {
+    try {
+      await this.dataSource.query(
+        `ALTER TABLE IF EXISTS public.otp ADD COLUMN IF NOT EXISTS email varchar`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Public schema migration skipped: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -186,6 +208,21 @@ export class TenantDbService implements OnModuleInit, OnModuleDestroy {
     await this.dataSource.query(
       `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`,
     );
+  }
+
+  /**
+   * Resolves a tenant's schema name from its id, throwing if it does not exist.
+   * Exposed so callers (e.g. the GraphQL resolver) don't reach into internals.
+   */
+  async getSchemaNameByTenantId(tenantId: string): Promise<string> {
+    const rows: { schema_name: string }[] = await this.dataSource.query(
+      `SELECT schema_name FROM public.tenant WHERE id = $1`,
+      [tenantId],
+    );
+    if (!rows || rows.length === 0) {
+      throw new NotFoundException('Tenant not found');
+    }
+    return rows[0].schema_name;
   }
 
   async withTenantDb<T>(

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
@@ -27,7 +27,7 @@ const PluginManifestSchema = z.object({
 export class PluginLoaderService {
   private readonly logger = new Logger(PluginLoaderService.name);
 
-  constructor(private readonly rootDir: string = process.cwd()) {}
+  constructor(@Optional() private readonly rootDir: string = process.cwd()) {}
 
   loadAll(): PluginDescriptor[] {
     const corePlugins = this.loadFromSource(

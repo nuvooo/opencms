@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
+import { GqlExecutionContext } from '@nestjs/graphql';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
@@ -29,7 +30,7 @@ export class JwtAuthGuard implements CanActivate {
     if (isPublic) {
       return true;
     }
-    const request = context.switchToHttp().getRequest();
+    const request = this.getRequest(context);
     const token = this.extractTokenFromHeader(request);
     if (!token) {
       throw new UnauthorizedException();
@@ -58,6 +59,16 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       return null;
     }
+  }
+
+  // Global guards run for HTTP and GraphQL resolvers alike, but the request
+  // lives in different places. Extract it from whichever context applies so the
+  // guard actually protects GraphQL operations instead of reading `undefined`.
+  private getRequest(context: ExecutionContext): Request & { user?: unknown } {
+    if (context.getType<'http' | 'graphql'>() === 'graphql') {
+      return GqlExecutionContext.create(context).getContext().req;
+    }
+    return context.switchToHttp().getRequest();
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

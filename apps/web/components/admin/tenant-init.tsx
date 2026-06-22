@@ -25,6 +25,11 @@ const TenantInit = () => {
         const valid = !!stored && list.some((t) => t.id === stored);
         if (!valid) {
           localStorage.setItem('admin-tenant-id', first.id);
+          // Pages read the active tenant synchronously on mount, so a missing or
+          // stale id (e.g. the DB was reseeded) means they already fired requests
+          // with a bad `x-tenant-id`. Reload once against the corrected id; the
+          // stored value is now valid, so this branch won't run again (no loop).
+          window.location.reload();
         }
       })
       .catch(console.error);

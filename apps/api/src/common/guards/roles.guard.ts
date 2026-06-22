@@ -1,7 +1,7 @@
 import { Role } from '@/common/constants';
+import { ROLES_KEY } from '@/common/decorators';
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from 'src/common/decorators';
 
 /**
  * Guard that enforces role-based access control for routes in a NestJS application.

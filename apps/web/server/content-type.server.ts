@@ -8,6 +8,7 @@ import {
   GetContentTypesSchema,
 } from '@/types/content-type.type';
 import { DefaultReturnSchema } from '@/types/default.type';
+import { authHeaders } from './auth-headers';
 
 export const getContentTypes = async (
   tenantId: string,
@@ -18,10 +19,7 @@ export const getContentTypes = async (
     '/content-types',
     {
       cache: 'no-store',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId }),
     },
   );
   if (error) throw new Error(error);
@@ -38,10 +36,7 @@ export const getContentType = async (
     `/content-types/${id}`,
     {
       cache: 'no-store',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId }),
     },
   );
   if (error) throw new Error(error);
@@ -58,11 +53,7 @@ export const createContentType = async (
     '/content-types',
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId, json: true }),
       body: JSON.stringify(input),
     },
   );
@@ -81,11 +72,7 @@ export const updateContentType = async (
     `/content-types/${id}`,
     {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId, json: true }),
       body: JSON.stringify(input),
     },
   );
@@ -100,10 +87,7 @@ export const deleteContentType = async (
   const session = await auth();
   const [error] = await safeFetch(DefaultReturnSchema, `/content-types/${id}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
 };

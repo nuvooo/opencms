@@ -16,13 +16,7 @@ export class ContentGraphqlResolver {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
-    const tenant = await this.tenantDb['tenantRepository'].findOne({
-      where: { id: tenantId },
-    });
-    if (!tenant) {
-      throw new Error('Tenant not found');
-    }
-    return tenant.schemaName;
+    return this.tenantDb.getSchemaNameByTenantId(tenantId);
   }
 
   @Query(() => [GraphQLJSON], { name: 'entries' })
@@ -39,6 +33,8 @@ export class ContentGraphqlResolver {
       content_type_slug: contentTypeSlug,
       locale,
       status,
+      limit,
+      offset,
     });
   }
 

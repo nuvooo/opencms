@@ -1,19 +1,20 @@
 'use server';
 
 import { auth } from '@/auth';
-import { env } from '@/lib/env';
 import { safeFetch } from '@/lib/safeFetch';
 import { DefaultReturnSchema } from '@/types/default.type';
-import { GetMediaSchema, Media } from '@/types/media.type';
+import {
+  GetMediaSchema,
+  GetSingleMediaSchema,
+  Media,
+} from '@/types/media.type';
+import { authHeaders } from './auth-headers';
 
 export const getMedia = async (tenantId: string): Promise<Media[]> => {
   const session = await auth();
   const [error, data] = await safeFetch(GetMediaSchema, '/media', {
     cache: 'no-store',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -24,17 +25,14 @@ export const uploadMedia = async (
   formData: FormData,
 ): Promise<Media> => {
   const session = await auth();
-  const response = await fetch(`${env.API_URL}/media/upload`, {
+  const [error, data] = await safeFetch(GetSingleMediaSchema, '/media/upload', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
     body: formData,
+    cache: 'no-store',
   });
-  const res = await response.json();
-  if (!response.ok) throw new Error(res.message);
-  return res.data;
+  if (error || !data) throw new Error(error ?? 'Failed to upload media');
+  return data.data;
 };
 
 export const deleteMedia = async (
@@ -44,10 +42,7 @@ export const deleteMedia = async (
   const session = await auth();
   const [error] = await safeFetch(DefaultReturnSchema, `/media/${id}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
 };

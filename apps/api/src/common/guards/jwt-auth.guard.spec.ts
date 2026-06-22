@@ -13,10 +13,23 @@ describe('JwtAuthGuard', () => {
   const buildContext = (authorization?: string) => {
     const request: any = { headers: { authorization } };
     return {
+      getType: () => 'http',
       switchToHttp: () => ({ getRequest: () => request }),
       getHandler: () => null,
       getClass: () => null,
     } as unknown as ExecutionContext;
+  };
+
+  const buildGqlContext = (authorization?: string) => {
+    const request: any = { headers: { authorization } };
+    const context = {
+      getType: () => 'graphql',
+      getArgs: () => [undefined, undefined, { req: request }, undefined],
+      switchToHttp: () => ({ getRequest: () => undefined }),
+      getHandler: () => null,
+      getClass: () => null,
+    } as unknown as ExecutionContext;
+    return { context, request };
   };
 
   beforeEach(() => {
@@ -55,5 +68,13 @@ describe('JwtAuthGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(jwtService.verifyAsync).not.toHaveBeenCalled();
     expect(apiTokenService.validateToken).toHaveBeenCalledWith(opaque);
+  });
+
+  it('authenticates requests arriving through the GraphQL context', async () => {
+    jwtService.verifyAsync.mockResolvedValue({ id: 'u1' });
+    const { context, request } = buildGqlContext('Bearer aaa.bbb.ccc');
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.user).toEqual({ id: 'u1' });
   });
 });

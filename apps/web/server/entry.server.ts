@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { safeFetch } from '@/lib/safeFetch';
 import { DefaultReturnSchema } from '@/types/default.type';
 import { Entry, GetEntriesSchema, GetEntrySchema } from '@/types/entry.type';
+import { authHeaders } from './auth-headers';
 
 export const getEntries = async (
   tenantId: string,
@@ -28,10 +29,7 @@ export const getEntries = async (
     `/entries${qs ? `?${qs}` : ''}`,
     {
       cache: 'no-store',
-      headers: {
-        Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-        'x-tenant-id': tenantId,
-      },
+      headers: authHeaders(session, { tenantId }),
     },
   );
   if (error) throw new Error(error);
@@ -45,10 +43,7 @@ export const getEntry = async (
   const session = await auth();
   const [error, data] = await safeFetch(GetEntrySchema, `/entries/${id}`, {
     cache: 'no-store',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
   return data.data;
@@ -61,11 +56,7 @@ export const createEntry = async (
   const session = await auth();
   const [error, data] = await safeFetch(GetEntrySchema, '/entries', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId, json: true }),
     body: JSON.stringify(input),
   });
   if (error) throw new Error(error);
@@ -80,11 +71,7 @@ export const updateEntry = async (
   const session = await auth();
   const [error, data] = await safeFetch(GetEntrySchema, `/entries/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId, json: true }),
     body: JSON.stringify(input),
   });
   if (error) throw new Error(error);
@@ -98,10 +85,7 @@ export const deleteEntry = async (
   const session = await auth();
   const [error] = await safeFetch(DefaultReturnSchema, `/entries/${id}`, {
     method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${session?.user?.tokens.access_token}`,
-      'x-tenant-id': tenantId,
-    },
+    headers: authHeaders(session, { tenantId }),
   });
   if (error) throw new Error(error);
 };

@@ -10,13 +10,18 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CreateLocaleDto } from './dto/create-locale.dto';
 import { UpdateLocaleDto } from './dto/update-locale.dto';
 import { LocaleService } from './locale.service';
 
 @ApiTags('locales')
 @ApiBearerAuth()
+@ApiHeader({
+  name: 'x-tenant-id',
+  description: 'Active tenant id (required for tenant-scoped routes)',
+  required: true,
+})
 @UseInterceptors(TenantInterceptor)
 @Controller('locales')
 export class LocaleController {

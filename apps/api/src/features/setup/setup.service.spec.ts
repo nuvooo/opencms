@@ -18,6 +18,7 @@ describe('SetupService', () => {
     };
     const userRepo = {
       findOne: jest.fn(),
+      count: jest.fn().mockResolvedValue(0),
     };
     const tx = {
       runInTransaction: jest.fn(),
@@ -48,6 +49,28 @@ describe('SetupService', () => {
       initialized: false,
       inProgress: false,
     });
+  });
+
+  it('reports initialized when an admin already exists even if the state flag is false', async () => {
+    const { service, stateRepo, userRepo } = makeService();
+    const state = {
+      id: 'singleton',
+      is_initialized: false,
+      setup_in_progress: false,
+      initialized_at: null,
+    };
+    stateRepo.findOne.mockResolvedValue(state);
+    stateRepo.save.mockImplementation(async (value: any) => value);
+    userRepo.count.mockResolvedValue(1);
+
+    await expect(service.getStatus()).resolves.toEqual({
+      initialized: true,
+      inProgress: false,
+    });
+    // and it locks the installer by persisting the flag
+    expect(stateRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ is_initialized: true }),
+    );
   });
 
   it('throws 409 when bootstrap called after initialization', async () => {

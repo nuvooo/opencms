@@ -36,8 +36,25 @@ export class SetupService {
 
   async getStatus(): Promise<SetupStatusResponse> {
     const state = await this.getOrCreateState();
+
+    if (state.is_initialized) {
+      return { initialized: true, inProgress: false };
+    }
+
+    // An admin can already exist on a pre-existing database even though the
+    // installer's own flag was never set. Treat that as initialized (and persist
+    // it) so the wizard stays locked instead of failing later at admin creation.
+    const adminCount = await this.userRepo.count({ where: { role: 'ADMIN' } });
+    if (adminCount > 0) {
+      state.is_initialized = true;
+      state.setup_in_progress = false;
+      state.initialized_at = state.initialized_at ?? new Date();
+      await this.stateRepo.save(state);
+      return { initialized: true, inProgress: false };
+    }
+
     return {
-      initialized: state.is_initialized,
+      initialized: false,
       inProgress: state.setup_in_progress,
     };
   }

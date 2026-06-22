@@ -1,5 +1,4 @@
 import { Roles } from '@/common/decorators';
-import { JwtAuthGuard } from '@/common/guards';
 import { FileInterceptor, MemoryStorageFile } from '@blazity/nest-file-fastify';
 import {
   Controller,
@@ -8,7 +7,6 @@ import {
   Param,
   Post,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
@@ -17,7 +15,6 @@ import { PluginRegistryService } from './plugin-registry.service';
 
 @ApiTags('plugins')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('plugins')
 export class PluginController {
   constructor(

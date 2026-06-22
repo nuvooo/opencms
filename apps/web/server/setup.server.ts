@@ -6,6 +6,7 @@ import {
   BootstrapSetupInputSchema,
   SetupStatusSchema,
   ValidateDbInputSchema,
+  ValidateDbResponseSchema,
 } from './setup.schema';
 
 export const getSetupStatus = async () => {
@@ -21,7 +22,7 @@ export const validateSetupDb = safeAction
   .schema(ValidateDbInputSchema)
   .action(async ({ parsedInput }) => {
     const [error] = await safeFetch(
-      DefaultReturnSchema.or(SetupStatusSchema),
+      ValidateDbResponseSchema,
       '/setup/validate-db',
       {
         method: 'POST',

@@ -41,6 +41,9 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+# backups/temp written by the setup installer (SetupEnvService)
+.env.bak
+.env.tmp.*
 
 # temp directory
 .temp

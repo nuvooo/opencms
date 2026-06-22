@@ -23,10 +23,14 @@ export const bootstrap = async (app: NestFastifyApplication): Promise<void> => {
   // Configuration service to get environment variables and other settings
   const configService = app.get(ConfigService<Env>);
 
-  // Set up security headers using helmet (Fastify plugin)
+  // Set up security headers using helmet (Fastify plugin).
+  // The API is consumed cross-origin (web app, Swagger "Try it out"), so the
+  // resource policy must allow cross-origin reads; the default 'same-origin'
+  // makes browsers reject otherwise CORS-valid responses.
   await app.register(helmet, {
     global: true,
     permittedCrossDomainPolicies: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   });
 
   // Serve static assets using Fastify's static plugin

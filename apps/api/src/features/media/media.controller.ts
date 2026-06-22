@@ -15,12 +15,17 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { CreateMediaDto } from './dto/create-media.dto';
 import { MediaService } from './media.service';
 
 @ApiTags('media')
 @ApiBearerAuth()
+@ApiHeader({
+  name: 'x-tenant-id',
+  description: 'Active tenant id (required for tenant-scoped routes)',
+  required: true,
+})
 @UseInterceptors(TenantInterceptor)
 @Controller('media')
 export class MediaController {

@@ -5,6 +5,10 @@ export const SetupStatusSchema = z.object({
   inProgress: z.boolean(),
 });
 
+export const ValidateDbResponseSchema = z.object({
+  ok: z.boolean(),
+});
+
 export const ValidateDbInputSchema = z.object({
   host: z.string().min(1),
   port: z.string().min(1),
