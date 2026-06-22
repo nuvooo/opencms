@@ -54,9 +54,13 @@ const collectErrors = (
 ): FieldErrors => {
   if (result.success) return {};
   const out: FieldErrors = {};
-  for (const [field, messages] of Object.entries(
-    result.error.flatten().fieldErrors,
-  )) {
+  // With an `unknown` schema output Zod types fieldErrors loosely, so narrow it
+  // to the known shape (a list of messages per field).
+  const fieldErrors = result.error.flatten().fieldErrors as Record<
+    string,
+    string[] | undefined
+  >;
+  for (const [field, messages] of Object.entries(fieldErrors)) {
     const id = fieldToId[field];
     if (id && messages && messages.length > 0) out[id] = messages[0];
   }
