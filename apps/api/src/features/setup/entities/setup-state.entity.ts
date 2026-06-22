@@ -11,7 +11,8 @@ export class SetupState {
   @Column({ type: 'boolean', default: false })
   setup_in_progress: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  // Portable across Postgres (`timestamp`) and MySQL/SQLite (`datetime`).
+  @Column({ type: Date, nullable: true })
   initialized_at: Date | null;
 
   @UpdateDateColumn()

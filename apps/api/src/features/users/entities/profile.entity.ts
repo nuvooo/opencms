@@ -73,7 +73,8 @@ export class Profile extends Base {
    * The date of birth of the user.
    * @type {string | undefined}
    */
-  @Column({ type: 'timestamp', nullable: true })
+  // Portable across Postgres (`timestamp`) and MySQL/SQLite (`datetime`).
+  @Column({ type: Date, nullable: true })
   dateOfBirth?: string;
 
   /**

@@ -20,7 +20,8 @@ export class ApiToken extends Base {
   @Column()
   userId: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  // Portable across Postgres (`timestamp`) and MySQL/SQLite (`datetime`).
+  @Column({ type: Date, nullable: true })
   expiresAt?: Date;
 
   @BeforeInsert()

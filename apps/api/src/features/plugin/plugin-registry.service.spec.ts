@@ -54,34 +54,52 @@ describe('PluginRegistryService', () => {
   });
 
   it('applies the persisted disabled state when rescanning', async () => {
-    (loaderStub.loadAll as jest.Mock).mockReturnValue([descriptor('media')]);
+    // `tenants` is an optional core feature, so it stays toggleable.
+    (loaderStub.loadAll as jest.Mock).mockReturnValue([descriptor('tenants')]);
+    stateRepo.find.mockResolvedValue([
+      { pluginId: 'tenants', enabled: false } as PluginState,
+    ]);
+
+    const registry = await makeRegistry();
+
+    expect(registry.get('tenants')?.enabled).toBe(false);
+  });
+
+  it('persists and reflects an enable/disable toggle', async () => {
+    (loaderStub.loadAll as jest.Mock).mockReturnValue([descriptor('tenants')]);
+    const registry = await makeRegistry();
+
+    await registry.setEnabled('tenants', false);
+
+    expect(stateRepo.save).toHaveBeenCalledWith({
+      pluginId: 'tenants',
+      enabled: false,
+    });
+    expect(registry.get('tenants')?.enabled).toBe(false);
+  });
+
+  it('marks core features as protected and forces them enabled', async () => {
+    (loaderStub.loadAll as jest.Mock).mockReturnValue([
+      descriptor('media'),
+      descriptor('tenants'),
+    ]);
+    // Even a stale "disabled" state must not turn a protected plugin off.
     stateRepo.find.mockResolvedValue([
       { pluginId: 'media', enabled: false } as PluginState,
     ]);
 
     const registry = await makeRegistry();
 
-    expect(registry.get('media')?.enabled).toBe(false);
+    expect(registry.get('media')?.protected).toBe(true);
+    expect(registry.get('media')?.enabled).toBe(true);
+    expect(registry.get('tenants')?.protected).toBe(false);
   });
 
-  it('persists and reflects an enable/disable toggle', async () => {
+  it('refuses to disable a protected core feature', async () => {
     (loaderStub.loadAll as jest.Mock).mockReturnValue([descriptor('media')]);
     const registry = await makeRegistry();
 
-    await registry.setEnabled('media', false);
-
-    expect(stateRepo.save).toHaveBeenCalledWith({
-      pluginId: 'media',
-      enabled: false,
-    });
-    expect(registry.get('media')?.enabled).toBe(false);
-  });
-
-  it('refuses to disable a protected plugin', async () => {
-    (loaderStub.loadAll as jest.Mock).mockReturnValue([descriptor('plugins')]);
-    const registry = await makeRegistry();
-
-    await expect(registry.setEnabled('plugins', false)).rejects.toBeInstanceOf(
+    await expect(registry.setEnabled('media', false)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
     expect(stateRepo.save).not.toHaveBeenCalled();

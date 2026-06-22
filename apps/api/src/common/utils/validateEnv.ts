@@ -54,6 +54,9 @@ export const EnvSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().default(''),
   AWS_S3_BUCKET_NAME: z.string().default(''),
   AWS_S3_ENDPOINT: z.string().default(''),
+  // First-run installer flag. Written by the setup wizard once provisioning
+  // succeeds; `main.ts` reads it to decide between installer and full boot.
+  SETUP_COMPLETE: z.string().optional(),
 });
 
 /**

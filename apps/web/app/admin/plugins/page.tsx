@@ -16,9 +16,6 @@ import { toast } from '@repo/shadcn/sonner';
 import { Switch } from '@repo/shadcn/switch';
 import { useEffect, useState } from 'react';
 
-// Kept enabled so an admin can always reach the plugin manager / dashboard.
-const PROTECTED_PLUGIN_IDS = new Set(['plugins', 'dashboard']);
-
 const Page = () => {
   const [plugins, setPlugins] = useState<PluginDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,15 +204,14 @@ const Page = () => {
                         <Switch
                           checked={plugin.enabled}
                           disabled={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
-                            togglingId === plugin.id
+                            plugin.protected || togglingId === plugin.id
                           }
                           onCheckedChange={(value: boolean) =>
                             handleToggle(plugin.id, value)
                           }
                           aria-label={`Toggle ${plugin.name}`}
                           title={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id)
+                            plugin.protected
                               ? 'This plugin cannot be disabled'
                               : undefined
                           }
@@ -275,8 +271,7 @@ const Page = () => {
                         <Switch
                           checked={plugin.enabled}
                           disabled={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
-                            togglingId === plugin.id
+                            plugin.protected || togglingId === plugin.id
                           }
                           onCheckedChange={(value: boolean) =>
                             handleToggle(plugin.id, value)

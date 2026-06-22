@@ -55,5 +55,10 @@ pids
 *.seed
 *.pid.lock
 
+# Local databases (created at runtime by the installer / SQLite engine)
+data/
+*.sqlite
+*.sqlite-journal
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

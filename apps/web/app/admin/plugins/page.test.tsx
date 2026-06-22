@@ -87,6 +87,32 @@ describe('admin plugins page', () => {
     ).toBe('true');
   });
 
+  it('disables the toggle for a protected core plugin', async () => {
+    getPluginsMock.mockResolvedValue([
+      {
+        id: 'entries',
+        name: 'Entries',
+        description: 'desc',
+        version: '1.0.0',
+        icon: 'box',
+        source: 'core',
+        isSystem: true,
+        enabled: true,
+        protected: true,
+        navItems: [],
+      },
+    ]);
+
+    render(<Page />);
+
+    const title = await screen.findByText('Entries');
+    const card = title.closest('[data-slot="card"]') as HTMLElement;
+    const toggle = within(card).getByRole('switch');
+
+    expect(toggle.hasAttribute('disabled')).toBe(true);
+    expect(toggle.getAttribute('title')).toMatch(/cannot be disabled/i);
+  });
+
   it('prevents starting a second delete while one is in flight', async () => {
     const initialPlugins = [
       {

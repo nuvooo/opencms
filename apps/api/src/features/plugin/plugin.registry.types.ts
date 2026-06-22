@@ -19,4 +19,9 @@ export interface PluginDescriptor extends PluginManifest {
   source: PluginSource;
   isSystem: boolean;
   enabled: boolean;
+  /**
+   * Protected plugins are core features the CMS cannot run without. They can
+   * never be disabled and are always reported as enabled.
+   */
+  protected: boolean;
 }

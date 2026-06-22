@@ -11,7 +11,7 @@ export class SetupController {
 
   @Public()
   @Get('status')
-  status(): Promise<SetupStatusResponse> {
+  status(): SetupStatusResponse {
     return this.setupService.getStatus();
   }
 
