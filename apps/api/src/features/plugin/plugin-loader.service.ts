@@ -114,6 +114,8 @@ export class PluginLoaderService {
         source,
         isSystem: source === 'core',
         enabled: true,
+        // The registry assigns the real protected state during rescan().
+        protected: false,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

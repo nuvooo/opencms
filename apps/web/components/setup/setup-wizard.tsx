@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  BootstrapSetupInputSchema,
+  DbConnectionStepSchema,
+} from '@/server/setup.schema';
 import { bootstrapSetup, validateSetupDb } from '@/server/setup.server';
 import { Button } from '@repo/shadcn/button';
 import {
@@ -21,7 +25,8 @@ import {
 } from '@repo/shadcn/lucide';
 import { useAction } from 'next-safe-action/hooks';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import type { SafeParseReturnType } from 'zod';
 
 type Step = 0 | 1 | 2 | 3 | 4;
 
@@ -37,10 +42,43 @@ const DB_ENGINES: {
   { value: 'sqlite', label: 'SQLite' },
 ];
 
+type FieldErrors = Record<string, string | undefined>;
+
+/**
+ * Maps a Zod safeParse failure onto wizard field ids so each message can be
+ * shown inline beneath its input instead of only in the console.
+ */
+const collectErrors = (
+  result: SafeParseReturnType<unknown, unknown>,
+  fieldToId: Record<string, string>,
+): FieldErrors => {
+  if (result.success) return {};
+  const out: FieldErrors = {};
+  // With an `unknown` schema output Zod types fieldErrors loosely, so narrow it
+  // to the known shape (a list of messages per field).
+  const fieldErrors = result.error.flatten().fieldErrors as Record<
+    string,
+    string[] | undefined
+  >;
+  for (const [field, messages] of Object.entries(fieldErrors)) {
+    const id = fieldToId[field];
+    if (id && messages && messages.length > 0) out[id] = messages[0];
+  }
+  return out;
+};
+
+const FieldError = ({ message }: { message?: string }) =>
+  message ? (
+    <p role="alert" className="text-sm text-destructive">
+      {message}
+    </p>
+  ) : null;
+
 const SetupWizard = () => {
   const router = useRouter();
   const [step, setStep] = useState<Step>(0);
   const [dbValidated, setDbValidated] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [form, setForm] = useState({
     app: {
       allowCorsUrl: 'http://localhost:3000',
@@ -78,13 +116,47 @@ const SetupWizard = () => {
   const backendError =
     validateDbAction.result.serverError ?? bootstrapAction.result.serverError;
 
-  const canSubmitBootstrap = useMemo(() => {
-    return (
-      Boolean(form.app.authSecret) &&
-      Boolean(form.admin.email) &&
-      Boolean(form.admin.password)
+  const clearError = (id: string) =>
+    setErrors((prev) => (prev[id] ? { ...prev, [id]: undefined } : prev));
+
+  const handleValidateDb = (event: React.FormEvent) => {
+    event.preventDefault();
+    const fieldErrors = collectErrors(
+      DbConnectionStepSchema.safeParse(form.database),
+      {
+        database: 'db-file',
+        host: 'db-host',
+        port: 'db-port',
+        username: 'db-username',
+        name: 'db-name',
+      },
     );
-  }, [form]);
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+    validateDbAction.execute(form.database);
+  };
+
+  const handleAdminNext = (event: React.FormEvent) => {
+    event.preventDefault();
+    const fieldErrors = collectErrors(
+      BootstrapSetupInputSchema.shape.admin.safeParse(form.admin),
+      { email: 'admin-email', password: 'admin-password' },
+    );
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+    setStep(3);
+  };
+
+  const handleInstall = (event: React.FormEvent) => {
+    event.preventDefault();
+    const fieldErrors = collectErrors(
+      BootstrapSetupInputSchema.shape.app.safeParse(form.app),
+      { authSecret: 'auth-secret' },
+    );
+    setErrors(fieldErrors);
+    if (Object.keys(fieldErrors).length > 0) return;
+    bootstrapAction.execute(form);
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -159,194 +231,212 @@ const SetupWizard = () => {
               Choose a database engine and connect the CMS to it.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Engine</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {DB_ENGINES.map((engine) => (
-                  <Button
-                    key={engine.value}
-                    type="button"
-                    variant={
-                      form.database.type === engine.value
-                        ? 'default'
-                        : 'outline'
-                    }
-                    onClick={() => {
-                      setDbValidated(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        database: {
-                          ...prev.database,
-                          type: engine.value,
-                          port: engine.defaultPort ?? prev.database.port,
-                        },
-                      }));
-                    }}
-                  >
-                    {engine.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {form.database.type === 'sqlite' ? (
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleValidateDb} noValidate>
               <div className="space-y-2">
-                <Label htmlFor="db-file">Database file path</Label>
-                <Input
-                  id="db-file"
-                  value={form.database.database}
-                  onChange={(event) => {
-                    setDbValidated(false);
-                    setForm((prev) => ({
-                      ...prev,
-                      database: {
-                        ...prev.database,
-                        database: event.target.value,
-                      },
-                    }));
-                  }}
-                />
-                <p className="text-xs text-muted-foreground">
-                  SQLite stores everything in a single file. No server required.
-                </p>
+                <Label>Engine</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {DB_ENGINES.map((engine) => (
+                    <Button
+                      key={engine.value}
+                      type="button"
+                      variant={
+                        form.database.type === engine.value
+                          ? 'default'
+                          : 'outline'
+                      }
+                      onClick={() => {
+                        setDbValidated(false);
+                        setErrors({});
+                        setForm((prev) => ({
+                          ...prev,
+                          database: {
+                            ...prev.database,
+                            type: engine.value,
+                            port: engine.defaultPort ?? prev.database.port,
+                          },
+                        }));
+                      }}
+                    >
+                      {engine.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+              {form.database.type === 'sqlite' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="db-file">Database file path</Label>
+                  <Input
+                    id="db-file"
+                    aria-invalid={Boolean(errors['db-file'])}
+                    value={form.database.database}
+                    onChange={(event) => {
+                      setDbValidated(false);
+                      clearError('db-file');
+                      setForm((prev) => ({
+                        ...prev,
+                        database: {
+                          ...prev.database,
+                          database: event.target.value,
+                        },
+                      }));
+                    }}
+                  />
+                  <FieldError message={errors['db-file']} />
+                  <p className="text-xs text-muted-foreground">
+                    SQLite stores everything in a single file. No server
+                    required.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="db-host">Host</Label>
+                      <Input
+                        id="db-host"
+                        aria-invalid={Boolean(errors['db-host'])}
+                        value={form.database.host}
+                        onChange={(event) => {
+                          setDbValidated(false);
+                          clearError('db-host');
+                          setForm((prev) => ({
+                            ...prev,
+                            database: {
+                              ...prev.database,
+                              host: event.target.value,
+                            },
+                          }));
+                        }}
+                      />
+                      <FieldError message={errors['db-host']} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="db-port">Port</Label>
+                      <Input
+                        id="db-port"
+                        aria-invalid={Boolean(errors['db-port'])}
+                        value={form.database.port}
+                        onChange={(event) => {
+                          setDbValidated(false);
+                          clearError('db-port');
+                          setForm((prev) => ({
+                            ...prev,
+                            database: {
+                              ...prev.database,
+                              port: event.target.value,
+                            },
+                          }));
+                        }}
+                      />
+                      <FieldError message={errors['db-port']} />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="db-host">Host</Label>
+                    <Label htmlFor="db-username">Username</Label>
                     <Input
-                      id="db-host"
-                      value={form.database.host}
+                      id="db-username"
+                      aria-invalid={Boolean(errors['db-username'])}
+                      value={form.database.username}
+                      onChange={(event) => {
+                        setDbValidated(false);
+                        clearError('db-username');
+                        setForm((prev) => ({
+                          ...prev,
+                          database: {
+                            ...prev.database,
+                            username: event.target.value,
+                          },
+                        }));
+                      }}
+                    />
+                    <FieldError message={errors['db-username']} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="db-password">Password</Label>
+                    <Input
+                      id="db-password"
+                      type="password"
+                      value={form.database.password}
                       onChange={(event) => {
                         setDbValidated(false);
                         setForm((prev) => ({
                           ...prev,
                           database: {
                             ...prev.database,
-                            host: event.target.value,
+                            password: event.target.value,
                           },
                         }));
                       }}
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="db-port">Port</Label>
+                    <Label htmlFor="db-name">Database name</Label>
                     <Input
-                      id="db-port"
-                      value={form.database.port}
+                      id="db-name"
+                      aria-invalid={Boolean(errors['db-name'])}
+                      value={form.database.name}
                       onChange={(event) => {
                         setDbValidated(false);
+                        clearError('db-name');
                         setForm((prev) => ({
                           ...prev,
                           database: {
                             ...prev.database,
-                            port: event.target.value,
+                            name: event.target.value,
                           },
                         }));
                       }}
                     />
+                    <FieldError message={errors['db-name']} />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="db-username">Username</Label>
-                  <Input
-                    id="db-username"
-                    value={form.database.username}
-                    onChange={(event) => {
-                      setDbValidated(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        database: {
-                          ...prev.database,
-                          username: event.target.value,
-                        },
-                      }));
-                    }}
-                  />
-                </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="db-ssl"
+                      checked={form.database.ssl}
+                      onCheckedChange={(checked: boolean) => {
+                        setDbValidated(false);
+                        setForm((prev) => ({
+                          ...prev,
+                          database: { ...prev.database, ssl: checked },
+                        }));
+                      }}
+                    />
+                    <Label htmlFor="db-ssl">Use SSL</Label>
+                  </div>
+                </>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="db-password">Password</Label>
-                  <Input
-                    id="db-password"
-                    type="password"
-                    value={form.database.password}
-                    onChange={(event) => {
-                      setDbValidated(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        database: {
-                          ...prev.database,
-                          password: event.target.value,
-                        },
-                      }));
-                    }}
-                  />
-                </div>
+              {dbValidated && (
+                <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-500">
+                  <CheckCircle2 className="size-4" /> Connection verified
+                </p>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="db-name">Database name</Label>
-                  <Input
-                    id="db-name"
-                    value={form.database.name}
-                    onChange={(event) => {
-                      setDbValidated(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        database: {
-                          ...prev.database,
-                          name: event.target.value,
-                        },
-                      }));
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="db-ssl"
-                    checked={form.database.ssl}
-                    onCheckedChange={(checked: boolean) => {
-                      setDbValidated(false);
-                      setForm((prev) => ({
-                        ...prev,
-                        database: { ...prev.database, ssl: checked },
-                      }));
-                    }}
-                  />
-                  <Label htmlFor="db-ssl">Use SSL</Label>
-                </div>
-              </>
-            )}
-
-            {dbValidated && (
-              <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-500">
-                <CheckCircle2 className="size-4" /> Connection verified
-              </p>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => validateDbAction.execute(form.database)}
-                disabled={validateDbAction.isExecuting}
-              >
-                {validateDbAction.isExecuting
-                  ? 'Validating...'
-                  : 'Validate connection'}
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setStep(2)}
-                disabled={!dbValidated}
-              >
-                Next
-              </Button>
-            </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={validateDbAction.isExecuting}
+                >
+                  {validateDbAction.isExecuting
+                    ? 'Validating...'
+                    : 'Validate connection'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  disabled={!dbValidated}
+                >
+                  Next
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -361,49 +451,64 @@ const SetupWizard = () => {
               This account has full administrative access.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="admin-email">Email</Label>
-              <Input
-                id="admin-email"
-                type="email"
-                value={form.admin.email}
-                onChange={(event) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    admin: { ...prev.admin, email: event.target.value },
-                  }));
-                }}
-              />
-            </div>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleAdminNext} noValidate>
+              <div className="space-y-2">
+                <Label htmlFor="admin-email">Email</Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={Boolean(errors['admin-email'])}
+                  value={form.admin.email}
+                  onChange={(event) => {
+                    clearError('admin-email');
+                    setForm((prev) => ({
+                      ...prev,
+                      admin: { ...prev.admin, email: event.target.value },
+                    }));
+                  }}
+                />
+                <FieldError message={errors['admin-email']} />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="admin-password">Password</Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={form.admin.password}
-                onChange={(event) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    admin: { ...prev.admin, password: event.target.value },
-                  }));
-                }}
-              />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="admin-password">Password</Label>
+                <Input
+                  id="admin-password"
+                  type="password"
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(errors['admin-password'])}
+                  value={form.admin.password}
+                  onChange={(event) => {
+                    clearError('admin-password');
+                    setForm((prev) => ({
+                      ...prev,
+                      admin: { ...prev.admin, password: event.target.value },
+                    }));
+                  }}
+                />
+                <FieldError message={errors['admin-password']} />
+                <p className="text-xs text-muted-foreground">
+                  At least 8 characters with an uppercase letter, a number and a
+                  special character.
+                </p>
+              </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(1)}
-              >
-                Back
-              </Button>
-              <Button type="button" onClick={() => setStep(3)}>
-                Next
-              </Button>
-            </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setErrors({});
+                    setStep(1);
+                  }}
+                >
+                  Back
+                </Button>
+                <Button type="submit">Next</Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}
@@ -418,56 +523,62 @@ const SetupWizard = () => {
               Confirm the details and finish the installation.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-md border bg-muted/40 p-4 text-sm">
-              <div className="flex justify-between py-1">
-                <span className="text-muted-foreground">Database</span>
-                <span className="font-medium">
-                  {form.database.type === 'sqlite'
-                    ? `sqlite: ${form.database.database || '-'}`
-                    : `${form.database.type} · ${form.database.host}:${form.database.port}/${form.database.name || '-'}`}
-                </span>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleInstall} noValidate>
+              <div className="rounded-md border bg-muted/40 p-4 text-sm">
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">Database</span>
+                  <span className="font-medium">
+                    {form.database.type === 'sqlite'
+                      ? `sqlite: ${form.database.database || '-'}`
+                      : `${form.database.type} · ${form.database.host}:${form.database.port}/${form.database.name || '-'}`}
+                  </span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-muted-foreground">Admin</span>
+                  <span className="font-medium">{form.admin.email || '-'}</span>
+                </div>
               </div>
-              <div className="flex justify-between py-1">
-                <span className="text-muted-foreground">Admin</span>
-                <span className="font-medium">{form.admin.email || '-'}</span>
+
+              <div className="space-y-2">
+                <Label htmlFor="auth-secret">Auth secret</Label>
+                <Input
+                  id="auth-secret"
+                  type="password"
+                  autoComplete="off"
+                  aria-invalid={Boolean(errors['auth-secret'])}
+                  value={form.app.authSecret}
+                  onChange={(event) => {
+                    clearError('auth-secret');
+                    setForm((prev) => ({
+                      ...prev,
+                      app: { ...prev.app, authSecret: event.target.value },
+                    }));
+                  }}
+                />
+                <FieldError message={errors['auth-secret']} />
+                <p className="text-xs text-muted-foreground">
+                  Used to sign authentication sessions. Keep it secret. At least
+                  10 characters.
+                </p>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="auth-secret">Auth secret</Label>
-              <Input
-                id="auth-secret"
-                type="password"
-                value={form.app.authSecret}
-                onChange={(event) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    app: { ...prev.app, authSecret: event.target.value },
-                  }));
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                Used to sign authentication sessions. Keep it secret.
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep(2)}
-              >
-                Back
-              </Button>
-              <Button
-                type="button"
-                onClick={() => bootstrapAction.execute(form)}
-                disabled={!canSubmitBootstrap || bootstrapAction.isExecuting}
-              >
-                {bootstrapAction.isExecuting ? 'Installing...' : 'Install'}
-              </Button>
-            </div>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setErrors({});
+                    setStep(2);
+                  }}
+                >
+                  Back
+                </Button>
+                <Button type="submit" disabled={bootstrapAction.isExecuting}>
+                  {bootstrapAction.isExecuting ? 'Installing...' : 'Install'}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}

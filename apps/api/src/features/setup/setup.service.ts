@@ -1,23 +1,28 @@
-import { TransactionService } from '@/database';
+import { ApiToken } from '@/features/api-token/entities/api-token.entity';
+import { Otp } from '@/features/auth/entities/otp.entity';
+import { Session } from '@/features/auth/entities/session.entity';
+import { Media } from '@/features/media/entities/media.entity';
+import { PluginState } from '@/features/plugin/entities/plugin-state.entity';
 import { Profile } from '@/features/users/entities/profile.entity';
 import { User } from '@/features/users/entities/user.entity';
+import { Tenant } from '@/tenants/tenant.entity';
 import {
   BadRequestException,
   ConflictException,
   HttpException,
   Injectable,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { Client } from 'pg';
-import { Repository } from 'typeorm';
+import { DataSource, type DataSourceOptions } from 'typeorm';
 import { BootstrapSetupDto } from './dto/bootstrap-setup.dto';
 import { SetupStatusResponse } from './dto/setup-status.response';
 import { ValidateDbDto } from './dto/validate-db.dto';
 import { SetupState } from './entities/setup-state.entity';
+import { SetupCompletionSignal } from './setup-completion.signal';
 import { SetupEnvService } from './setup-env.service';
-import { SETUP_STATE_ID } from './setup.constants';
+import { isSetupComplete } from './setup-env.util';
 
 export class LockedException extends HttpException {
   constructor(message: string) {
@@ -25,40 +30,40 @@ export class LockedException extends HttpException {
   }
 }
 
+/**
+ * Entities the installer materialises into the freshly chosen database via
+ * `synchronize`. Per-tenant content tables are created on demand elsewhere
+ * (hand-rolled SQL) and are intentionally excluded here.
+ */
+const SCHEMA_ENTITIES = [
+  User,
+  Profile,
+  Session,
+  Otp,
+  ApiToken,
+  Media,
+  PluginState,
+  SetupState,
+  Tenant,
+];
+
+/**
+ * Drives the first-run installer. Deliberately free of any injected
+ * repository/connection so it can run inside the lightweight installer
+ * application that boots *without* a database. The database is only contacted
+ * through short-lived clients/DataSources built from the wizard's own input.
+ */
 @Injectable()
 export class SetupService {
+  private inProgress = false;
+
   constructor(
-    @InjectRepository(SetupState)
-    private readonly stateRepo: Repository<SetupState>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    private readonly tx: TransactionService,
     private readonly envService: SetupEnvService,
+    private readonly completion: SetupCompletionSignal,
   ) {}
 
-  async getStatus(): Promise<SetupStatusResponse> {
-    const state = await this.getOrCreateState();
-
-    if (state.is_initialized) {
-      return { initialized: true, inProgress: false };
-    }
-
-    // An admin can already exist on a pre-existing database even though the
-    // installer's own flag was never set. Treat that as initialized (and persist
-    // it) so the wizard stays locked instead of failing later at admin creation.
-    const adminCount = await this.userRepo.count({ where: { role: 'ADMIN' } });
-    if (adminCount > 0) {
-      state.is_initialized = true;
-      state.setup_in_progress = false;
-      state.initialized_at = state.initialized_at ?? new Date();
-      await this.stateRepo.save(state);
-      return { initialized: true, inProgress: false };
-    }
-
-    return {
-      initialized: false,
-      inProgress: state.setup_in_progress,
-    };
+  getStatus(): SetupStatusResponse {
+    return { initialized: isSetupComplete(), inProgress: this.inProgress };
   }
 
   async validateDatabase(dto: ValidateDbDto): Promise<void> {
@@ -131,21 +136,23 @@ export class SetupService {
   }
 
   async bootstrap(dto: BootstrapSetupDto): Promise<void> {
-    const state = await this.getOrCreateState();
-
-    if (state.is_initialized) {
+    if (isSetupComplete()) {
       throw new ConflictException('Already initialized');
     }
-
-    if (state.setup_in_progress) {
+    if (this.inProgress) {
       throw new LockedException('Setup in progress');
     }
 
-    state.setup_in_progress = true;
-    await this.stateRepo.save(state);
+    this.inProgress = true;
+    let dataSource: DataSource | undefined;
 
     try {
       await this.validateDatabase(dto.database);
+
+      // Build the schema in the chosen database, then seed the admin account.
+      dataSource = new DataSource(this.buildDataSourceOptions(dto.database));
+      await dataSource.initialize();
+      await this.createAdmin(dataSource, dto.admin.email, dto.admin.password);
 
       const db = dto.database;
       this.envService.writeAllowlisted({
@@ -160,28 +167,74 @@ export class SetupService {
         DB_NAME: db.name,
         DB_DATABASE: db.database,
         DB_SSL: db.ssl === undefined ? undefined : String(db.ssl),
+        SETUP_COMPLETE: 'true',
       });
 
-      await this.createAdmin(dto.admin.email, dto.admin.password);
-
-      state.is_initialized = true;
-      state.setup_in_progress = false;
-      state.initialized_at = new Date();
-      await this.stateRepo.save(state);
+      this.inProgress = false;
+      this.completion.complete();
     } catch (error) {
-      state.setup_in_progress = false;
-      await this.stateRepo.save(state);
+      this.inProgress = false;
       throw error;
+    } finally {
+      if (dataSource?.isInitialized) {
+        await dataSource.destroy().catch(() => null);
+      }
     }
   }
 
-  private async createAdmin(email: string, password: string): Promise<void> {
-    const existing = await this.userRepo.findOne({ where: { email } });
-    if (existing) {
-      throw new ConflictException('Admin email already exists');
+  /**
+   * Translates the wizard's database input into TypeORM connection options with
+   * `synchronize` enabled so the installer can create the schema from scratch.
+   */
+  private buildDataSourceOptions(dto: ValidateDbDto): DataSourceOptions {
+    const type = dto.type ?? 'postgres';
+
+    if (type === 'sqlite') {
+      return {
+        type: 'better-sqlite3',
+        database: dto.database ?? dto.name ?? './data/cms.sqlite',
+        entities: SCHEMA_ENTITIES,
+        synchronize: true,
+      };
     }
 
-    await this.tx.runInTransaction(async (manager) => {
+    if (type === 'mysql') {
+      return {
+        type: 'mysql',
+        host: dto.host,
+        port: Number(dto.port),
+        username: dto.username,
+        password: dto.password,
+        database: dto.name,
+        entities: SCHEMA_ENTITIES,
+        synchronize: true,
+      };
+    }
+
+    return {
+      type: 'postgres',
+      host: dto.host,
+      port: Number(dto.port),
+      username: dto.username,
+      password: dto.password,
+      database: dto.name,
+      ssl: dto.ssl ? { rejectUnauthorized: false } : false,
+      entities: SCHEMA_ENTITIES,
+      synchronize: true,
+    };
+  }
+
+  private async createAdmin(
+    dataSource: DataSource,
+    email: string,
+    password: string,
+  ): Promise<void> {
+    await dataSource.transaction(async (manager) => {
+      const existing = await manager.findOne(User, { where: { email } });
+      if (existing) {
+        throw new ConflictException('Admin email already exists');
+      }
+
       const user = manager.create(User, {
         email,
         password,
@@ -197,23 +250,5 @@ export class SetupService {
       });
       await manager.save(Profile, profile);
     });
-  }
-
-  private async getOrCreateState(): Promise<SetupState> {
-    const existing = await this.stateRepo.findOne({
-      where: { id: SETUP_STATE_ID },
-    });
-    if (existing) {
-      return existing;
-    }
-
-    const state = this.stateRepo.create({
-      id: SETUP_STATE_ID,
-      is_initialized: false,
-      setup_in_progress: false,
-      initialized_at: null,
-    });
-
-    return this.stateRepo.save(state);
   }
 }

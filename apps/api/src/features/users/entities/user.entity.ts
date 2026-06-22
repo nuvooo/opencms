@@ -58,7 +58,9 @@ export class User extends Base {
    * The date and time when the email was verified.
    * @type {Date}
    */
-  @Column({ type: 'timestamp', nullable: true })
+  // `type: Date` is portable: TypeORM maps it to `timestamp` on Postgres and
+  // `datetime` on MySQL/SQLite (a literal `'timestamp'` is rejected by SQLite).
+  @Column({ type: Date, nullable: true })
   emailVerifiedAt: Date;
 
   @Column({ type: 'simple-enum', enum: roleSchema.options, default: 'USER' })

@@ -1,15 +1,18 @@
-import { TransactionService } from '@/database';
-import { User } from '@/features/users/entities/user.entity';
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { SetupState } from './entities/setup-state.entity';
+import { SetupCompletionSignal } from './setup-completion.signal';
 import { SetupEnvService } from './setup-env.service';
 import { SetupController } from './setup.controller';
 import { SetupService } from './setup.service';
 
+/**
+ * Setup feature. Depends on no database connection so it can run inside both
+ * the lightweight installer application (pre-database) and the full
+ * application. {@link SetupCompletionSignal} is exported so the bootstrapper can
+ * await installer completion.
+ */
 @Module({
-  imports: [TypeOrmModule.forFeature([SetupState, User])],
   controllers: [SetupController],
-  providers: [SetupService, SetupEnvService, TransactionService],
+  providers: [SetupService, SetupEnvService, SetupCompletionSignal],
+  exports: [SetupCompletionSignal],
 })
 export class SetupModule {}

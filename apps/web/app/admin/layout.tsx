@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import AdminSidebar from '@/components/admin-sidebar';
 import PluginLoader from '@/components/admin/plugin-loader';
+import PluginRouteGuard from '@/components/admin/plugin-route-guard';
 import TenantInit from '@/components/admin/tenant-init';
 import TopBar from '@/components/top-bar';
 import { PluginProvider } from '@/lib/plugin/registry';
@@ -29,7 +30,9 @@ const AdminLayout = async ({ children }: { children: React.ReactNode }) => {
         <AdminSidebar user={user} />
         <main className="lg:pl-64 pt-14 lg:pt-0">
           <TopBar className="hidden lg:flex" />
-          <div className="p-6">{children}</div>
+          <div className="p-6">
+            <PluginRouteGuard>{children}</PluginRouteGuard>
+          </div>
         </main>
       </div>
       <PluginLoader />

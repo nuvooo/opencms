@@ -41,7 +41,8 @@ export class Otp extends Base {
    * The expiration date and time of the OTP.
    * @type {Date}
    */
-  @Column({ type: 'timestamp', nullable: false })
+  // Portable across Postgres (`timestamp`) and MySQL/SQLite (`datetime`).
+  @Column({ type: Date, nullable: false })
   expires: Date;
 
   /**

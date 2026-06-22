@@ -15,6 +15,9 @@ export const PluginDescriptorSchema = z.object({
   source: z.enum(['core', 'user']),
   isSystem: z.boolean(),
   enabled: z.boolean(),
+  // Core features that cannot be disabled. Optional/defaulted for resilience
+  // against older API responses that predate the flag.
+  protected: z.boolean().optional().default(false),
   navItems: z.array(PluginNavItemSchema),
 });
 

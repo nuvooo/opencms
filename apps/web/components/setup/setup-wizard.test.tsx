@@ -78,6 +78,10 @@ describe('SetupWizard', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
     expect(await screen.findByText(/database settings/i)).toBeDefined();
 
+    // The database name is required before a connection can be validated.
+    fireEvent.change(screen.getByLabelText(/database name/i), {
+      target: { value: 'cms' },
+    });
     fireEvent.click(
       screen.getByRole('button', { name: /validate connection/i }),
     );
@@ -87,7 +91,7 @@ describe('SetupWizard', () => {
       port: '5432',
       username: 'postgres',
       password: '',
-      name: '',
+      name: 'cms',
       database: './data/cms.sqlite',
       ssl: false,
     });
@@ -99,14 +103,14 @@ describe('SetupWizard', () => {
       target: { value: 'admin@example.com' },
     });
     fireEvent.change(screen.getByLabelText(/password/i), {
-      target: { value: 'password123' },
+      target: { value: 'Password123!' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
     expect(await screen.findByText(/review setup/i)).toBeDefined();
 
     fireEvent.change(screen.getByLabelText(/auth secret/i), {
-      target: { value: 'secret123' },
+      target: { value: 'supersecret-123' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: /install/i }));
@@ -114,11 +118,52 @@ describe('SetupWizard', () => {
       expect.objectContaining({
         admin: {
           email: 'admin@example.com',
-          password: 'password123',
+          password: 'Password123!',
         },
       }),
     );
     expect(await screen.findByText(/installation completed/i)).toBeDefined();
+  });
+
+  it('surfaces zod validation inline and blocks advancing on a weak admin password', async () => {
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText(/database settings/i);
+    fireEvent.change(screen.getByLabelText(/database name/i), {
+      target: { value: 'cms' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: /validate connection/i }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+    await screen.findByText(/first admin account/i);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'admin@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'weak' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^next$/i }));
+
+    // The zod message is shown in the UI and the review step is not reached.
+    // "Use at least 8 characters" disambiguates from the field's helper text.
+    expect(await screen.findByText(/use at least 8 characters/i)).toBeDefined();
+    expect(screen.queryByText(/review setup/i)).toBeNull();
+  });
+
+  it('blocks DB validation and shows a required-field error when the name is empty', async () => {
+    render(<SetupWizard />);
+
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
+    await screen.findByText(/database settings/i);
+    fireEvent.click(
+      screen.getByRole('button', { name: /validate connection/i }),
+    );
+
+    expect(await screen.findByText(/enter a database name/i)).toBeDefined();
+    expect(validateAction.execute).not.toHaveBeenCalled();
   });
 
   it('shows backend validation error when DB preflight fails', () => {

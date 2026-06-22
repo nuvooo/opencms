@@ -1,6 +1,7 @@
 'use client';
 
 import { getIcon } from '@/lib/plugin/icons';
+import { usePluginRegistry } from '@/lib/plugin/registry';
 import { PluginDescriptor } from '@/server/plugin.schema';
 import {
   getPlugins,
@@ -14,13 +15,14 @@ import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { toast } from '@repo/shadcn/sonner';
 import { Switch } from '@repo/shadcn/switch';
-import { useEffect, useState } from 'react';
-
-// Kept enabled so an admin can always reach the plugin manager / dashboard.
-const PROTECTED_PLUGIN_IDS = new Set(['plugins', 'dashboard']);
+import { useCallback, useEffect, useState } from 'react';
 
 const Page = () => {
-  const [plugins, setPlugins] = useState<PluginDescriptor[]>([]);
+  // The sidebar nav is driven by the shared plugin registry, so every update
+  // here must be written through to it — otherwise an enable/disable only takes
+  // visible effect after a full page refresh.
+  const { setPlugins: setRegistryPlugins } = usePluginRegistry();
+  const [plugins, setLocalPlugins] = useState<PluginDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
@@ -28,11 +30,19 @@ const Page = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  const applyPlugins = useCallback(
+    (next: PluginDescriptor[]) => {
+      setLocalPlugins(next);
+      setRegistryPlugins(next);
+    },
+    [setRegistryPlugins],
+  );
+
   const handleToggle = async (id: string, enabled: boolean) => {
     setTogglingId(id);
     try {
       const next = await togglePlugin(id, enabled);
-      setPlugins(next);
+      applyPlugins(next);
       setError(null);
       toast.success(`Plugin ${enabled ? 'enabled' : 'disabled'}`);
     } catch (err) {
@@ -47,7 +57,7 @@ const Page = () => {
   useEffect(() => {
     getPlugins()
       .then((data) => {
-        setPlugins(data);
+        applyPlugins(data);
         setError(null);
       })
       .catch((err) => {
@@ -63,7 +73,7 @@ const Page = () => {
     setRescanning(true);
     try {
       const next = await rescanPlugins();
-      setPlugins(next);
+      applyPlugins(next);
       setError(null);
       toast.success('Plugins rescanned');
     } catch (err) {
@@ -86,7 +96,7 @@ const Page = () => {
 
     try {
       const next = await installPlugin(body);
-      setPlugins(next);
+      applyPlugins(next);
       setError(null);
       toast.success(`Installed ${file.name}`);
     } catch (err) {
@@ -106,7 +116,7 @@ const Page = () => {
     setDeletingId(id);
     try {
       const next = await uninstallPlugin(id);
-      setPlugins(next);
+      applyPlugins(next);
       setError(null);
       toast.success('Plugin removed');
     } catch (err) {
@@ -207,15 +217,14 @@ const Page = () => {
                         <Switch
                           checked={plugin.enabled}
                           disabled={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
-                            togglingId === plugin.id
+                            plugin.protected || togglingId === plugin.id
                           }
                           onCheckedChange={(value: boolean) =>
                             handleToggle(plugin.id, value)
                           }
                           aria-label={`Toggle ${plugin.name}`}
                           title={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id)
+                            plugin.protected
                               ? 'This plugin cannot be disabled'
                               : undefined
                           }
@@ -275,8 +284,7 @@ const Page = () => {
                         <Switch
                           checked={plugin.enabled}
                           disabled={
-                            PROTECTED_PLUGIN_IDS.has(plugin.id) ||
-                            togglingId === plugin.id
+                            plugin.protected || togglingId === plugin.id
                           }
                           onCheckedChange={(value: boolean) =>
                             handleToggle(plugin.id, value)

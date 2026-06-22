@@ -1,178 +1,120 @@
-<img src="assets/preview.png" width="851" alt="hello">
+<img src="assets/preview.png" width="851" alt="OpenCMS">
 
-## NestJS & NextJS Boilerplate with Turborepo
+# OpenCMS
 
-This repository provides a scalable and efficient `monorepo` setup using Turborepo. It includes `NestJS` for backend
-services and `NextJS` for frontend applications, with a suite of tools and libraries configured for seamless development
-and deployment.
+**OpenCMS** is an open-source, self-hostable headless CMS built on a modern TypeScript stack. It pairs a
+**NestJS (Fastify)** API with a **Next.js** admin app in a single Turborepo monorepo, and ships with a guided
+first-run installer, multi-database support, multi-tenancy, and a pluggable feature system.
 
-### **Features**
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- `NestJS (v11)` backend
-- `NextJS (v15)` frontend
-- `SWC` for fast TypeScript and JavaScript transpilation
-- `pnpm` for efficient dependency management
-- `JWT` Access Token & Refresh Token Authentication for secure API access
-- `PostgreSQL`, `MySQL`/`MariaDB` or `SQLite` database with TypeORM (selectable via `DB_TYPE`)
-- `Nodemailer` for email services
-- `Linting` and `Formatting` pre-configured for code quality
-- `Micro-Frontend` Support with Turborepo
-- `Shadcn/UI` integration for styled components
-- `Tailwindcss(v4)` integration in `@repo/shadcn`
+---
 
-### **Table of Contents**
+## Highlights
 
-- Installation
-- Getting Started
-- Project Structure
-- Scripts
-- Contributing
-- License
+- **Zero-config first run** — start the apps, open the browser, and a setup wizard provisions the database and
+  the first admin account. No `.env` editing required to get going.
+- **Bring your own database** — PostgreSQL, MySQL/MariaDB, or SQLite, selected at setup time (or via `DB_TYPE`).
+- **Content modeling** — define content types and fields, author entries, manage media, and translate via locales.
+- **Multi-tenancy** — isolated content per tenant using a table-name prefix, so it works on every supported engine.
+- **Headless API** — REST under `/api` with JWT auth, API tokens for programmatic access, and Swagger docs.
+- **Pluggable features** — core features are plugins; install additional ones from a ZIP, toggle them on/off, and
+  routes/navigation react instantly. See **[Plugin Development](docs/plugin-development.md)**.
+- **Batteries included** — JWT access/refresh auth, email (Nodemailer), file storage (local or S3),
+  shadcn/UI + Tailwind v4, ESLint/Prettier, and tests across both apps.
 
-### **Installation**
+## Tech stack
 
-Clone the repository:
+| Layer    | Technology                                                          |
+| -------- | ------------------------------------------------------------------- |
+| Monorepo | Turborepo, pnpm workspaces, SWC                                     |
+| API      | NestJS 11, Fastify, TypeORM, Zod, JWT, Nodemailer                   |
+| Web      | Next.js 15 (App Router), React 19, NextAuth, shadcn/UI, Tailwind v4 |
+| Database | PostgreSQL · MySQL/MariaDB · SQLite (via `DB_TYPE`)                 |
 
-```shell
-git clone https://github.com/devaungphyo/turbo-npn.git
-```
+## Quick start
 
-Navigate to the project directory:
+**Prerequisites:** Node.js ≥ 20 and pnpm 9 (`corepack enable`). A database server is optional — you can pick
+**SQLite** in the installer and run with no external services.
 
-```shell
-cd turbo-npn
-```
-
-Install dependencies using pnpm:
-
-```shell
+```bash
+# 1. Clone and install
+git clone https://github.com/nuvooo/opencms.git
+cd opencms
 pnpm install
-```
 
-Getting Started
-To start the development server, run:
-
-```shell
+# 2. Start both apps in dev mode (API on :8000, web on :3000)
 pnpm dev
 ```
 
-This will start both the NestJS backend and the Next.js frontend in development mode.
+Open **http://localhost:3000**. On a fresh install you are redirected to **`/setup`**, where the wizard lets you:
 
-Project Structure
-The repository is organized into the following structure:
+1. choose a database engine and validate the connection,
+2. create the first admin account,
+3. finish — the API provisions the schema, writes its `.env`, and switches into full mode automatically.
 
-```yaml
-turborepo
-├── .husky               # Git hooks
+Then sign in with the admin account you just created. That's it.
+
+> New to the project? Read **[docs/getting-started.md](docs/getting-started.md)** for a step-by-step walkthrough.
+
+## Documentation
+
+| Guide                                            | What it covers                                              |
+| ------------------------------------------------ | ----------------------------------------------------------- |
+| [Getting Started](docs/getting-started.md)       | Prerequisites, install, run, and the first-run setup wizard |
+| [Configuration](docs/configuration.md)           | Every environment variable for the API and web apps         |
+| [Architecture](docs/architecture.md)             | Monorepo layout, request flow, auth, and the plugin system  |
+| [Plugin Development](docs/plugin-development.md) | Build, package, install, and gate feature plugins           |
+
+## Project structure
+
+```text
+opencms
 ├── apps
-│   ├── api              # NestJS application
-│   └── web              # NextJS application
-├── assets               # Assets folder for media assets
+│   ├── api                 # NestJS + Fastify API
+│   │   ├── core/plugins    # Built-in feature plugins (manifests)
+│   │   └── src             # Features: content-types, entries, media, locales,
+│   │                       # tenants, plugins, api-token, auth, setup, ...
+│   └── web                 # Next.js admin app (App Router)
 ├── packages
-│   ├── shadcn           # shadcn/UI component library
-│   ├── ts-config        # Shared typescript configuration files
-│   ├── eslint-config    # Shared eslint configuration files
-│   ├── utils            # Shared utils functions
-└── turbo.json           # Turborepo configuration
+│   ├── shadcn              # shadcn/UI component library (Tailwind v4)
+│   ├── utils               # Shared utility functions
+│   ├── constants           # Shared constants
+│   ├── eslint-config       # Shared ESLint config
+│   └── ts-config           # Shared TypeScript config
+├── docs                    # Project documentation
+└── turbo.json              # Turborepo pipeline
 ```
 
-### Backend (NestJS)
+## Common scripts
 
-The backend is powered by NestJS, with TypeORM. JWT access token and refresh token
-authentication is implemented for secure API access. Nodemailer is used to handle email services.
+Run from the repo root:
 
-#### Choosing a database
+| Script         | Description                      |
+| -------------- | -------------------------------- |
+| `pnpm dev`     | Start API + web in watch mode    |
+| `pnpm dev:api` | Start only the API               |
+| `pnpm dev:web` | Start only the web app           |
+| `pnpm build`   | Build both apps for production   |
+| `pnpm start`   | Run both apps in production mode |
+| `pnpm test`    | Run all tests                    |
+| `pnpm lint`    | Lint the whole repo              |
+| `pnpm format`  | Format with Prettier             |
 
-The backend runs on **PostgreSQL** (default), **MySQL/MariaDB** or **SQLite**. Select the engine with the
-`DB_TYPE` environment variable in `apps/api/.env`:
+## Testing
 
-```shell
-# PostgreSQL (default)
-DB_TYPE=postgres
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=password
-DB_NAME=cms
-
-# MySQL / MariaDB
-DB_TYPE=mysql
-DB_HOST=localhost
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=password
-DB_NAME=cms
-
-# SQLite (no server needed — great for local development)
-DB_TYPE=sqlite
-DB_DATABASE=./data/cms.sqlite
+```bash
+pnpm test            # everything
+pnpm test:api        # API (Jest)
+pnpm test:web        # web (Vitest)
 ```
 
-Notes:
+## Contributing
 
-- Multi-tenancy is implemented with a **table-name prefix per tenant** (e.g. `tenant_acme_entry`), so it works
-  identically across all three engines (Postgres schemas are no longer required).
-- For PostgreSQL the `pg` driver is used, for MySQL/MariaDB `mysql2`, and for SQLite `better-sqlite3` — all three are
-  installed by default.
-- With `DB_TYPE=sqlite` the host/port/credentials are ignored; only `DB_DATABASE` (the file path) is used. The parent
-  directory is created automatically.
+Contributions are welcome! Please open an issue to discuss substantial changes first, then fork, branch, and
+open a pull request. Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (use
+`pnpm commit` for a guided prompt). Run `pnpm lint` and `pnpm test` before submitting.
 
-<img src="assets/lifecycle.png" alt="life cycle" width="100%">
+## License
 
-### Frontend (NextJS)
-
-The frontend is built with NextJS v15, styled with shadcn/UI components. It is optimized for server-side rendering and
-frontend authentication.
-Micro-Frontend with Turborepo
-Using Turborepo, the project supports a micro-frontend architecture, enabling shared libraries and configurations across
-apps.
-
-### To Add New UI Components to the UI Package
-
-```shell
-cd packages/shadcn
-```
-
-Then run the following command:
-
-```shell
-pnpm dlx shadcn@latest add
-```
-
-This will add the latest version of shadcn to the UI package.
-
-`If you got an error in the UI package, change the import path`
-
-```tsx
-// form
-import { cn } from '@repo/lib/utils';
-
-// to
-import { cn } from '@repo/shadcn/lib/utils';
-```
-
-### Scripts
-
-- `pnpm add:api` - Adds a package specifically to the api workspace.
-- `pnpm add:web` - Adds a package specifically to the web workspace.
-- `pnpm build` - Builds both the backend and frontend for production using TurboRepo.
-- `pnpm changeset` - Creates a new changeset for versioning updates.
-- `pnpm clear:modules` - Clears all node_modules in the project using npkill.
-- `pnpm commit` - Opens an interactive commit message interface using Commitizen (cz).
-- `pnpm dev` - Starts both the backend and frontend in development mode using TurboRepo.
-- `pnpm dev:api` - Starts the backend (api) in development mode.
-- `pnpm dev:web` - Starts the frontend (web) in development mode.
-- `pnpm format` - Formats the codebase according to the pre-configured Prettier rules.
-- `pnpm format:check` - Checks the codebase formatting against Prettier rules without modifying files.
-- `pnpm lint` - Lints all code in the repository using TurboRepo.
-- `pnpm prepare` - Runs Husky to set up Git hooks.
-- `pnpm prod` - Starts both the backend and frontend in production mode.
-- `pnpm test` - Runs all tests defined in the repository using TurboRepo.
-
-### Contributing
-
-Contributions are welcome! Please fork this repository, make your changes, and submit a pull request.
-
-### License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+OpenCMS is released under the [MIT License](LICENSE).

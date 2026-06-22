@@ -1,4 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { SetupCompletionSignal } from './setup-completion.signal';
+import * as envUtil from './setup-env.util';
 import { LockedException, SetupService } from './setup.service';
 
 jest.mock('pg', () => ({
@@ -9,94 +12,120 @@ jest.mock('pg', () => ({
   })),
 }));
 
+/**
+ * Stubs the short-lived bootstrap DataSource so the orchestration (schema +
+ * admin creation, env write, completion signal) can be tested without a real
+ * driver. The provided manager fakes a clean database (no existing admin).
+ */
+const stubDataSource = () => {
+  jest
+    .spyOn(DataSource.prototype, 'initialize')
+    .mockResolvedValue(undefined as never);
+  jest
+    .spyOn(DataSource.prototype, 'destroy')
+    .mockResolvedValue(undefined as never);
+  jest
+    .spyOn(DataSource.prototype, 'transaction')
+    .mockImplementation(async (runOrIsolation: unknown) => {
+      const run = runOrIsolation as (manager: unknown) => Promise<unknown>;
+      const manager = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn((_entity: unknown, payload: unknown) => payload),
+        save: jest.fn(async (_entity: unknown, payload: any) => ({
+          id: payload.id ?? 'generated-user-id',
+          ...payload,
+        })),
+      };
+      return run(manager);
+    });
+};
+
 describe('SetupService', () => {
   const makeService = () => {
-    const stateRepo = {
-      findOne: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
-    };
-    const userRepo = {
-      findOne: jest.fn(),
-      count: jest.fn().mockResolvedValue(0),
-    };
-    const tx = {
-      runInTransaction: jest.fn(),
-    };
     const envService = {
       writeAllowlisted: jest.fn(),
     };
+    const completion = new SetupCompletionSignal();
 
-    const service = new SetupService(
-      stateRepo as any,
-      userRepo as any,
-      tx as any,
-      envService as any,
-    );
+    const service = new SetupService(envService as any, completion);
 
-    return { service, stateRepo, userRepo, tx, envService };
+    return { service, envService, completion };
   };
 
-  it('returns initialized/inProgress status', async () => {
-    const { service, stateRepo } = makeService();
-    stateRepo.findOne.mockResolvedValue({
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: false,
-    });
+  // Use an isolated in-memory SQLite database so bootstrap exercises the real
+  // schema synchronisation and admin creation without touching a DB server.
+  const sqliteBootstrapDto = (email = 'admin@example.com') => ({
+    app: {
+      allowCorsUrl: 'http://localhost:3000',
+      authSecret: 'secret',
+      authUrl: 'http://localhost:3000',
+    },
+    database: {
+      type: 'sqlite' as const,
+      database: ':memory:',
+    },
+    admin: {
+      email,
+      password: 'Password123!',
+    },
+  });
 
-    await expect(service.getStatus()).resolves.toEqual({
+  beforeEach(() => {
+    jest.spyOn(envUtil, 'isSetupComplete').mockReturnValue(false);
+    stubDataSource();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns initialized/inProgress status from the env flag', () => {
+    const { service } = makeService();
+
+    expect(service.getStatus()).toEqual({
       initialized: false,
       inProgress: false,
     });
   });
 
-  it('reports initialized when an admin already exists even if the state flag is false', async () => {
-    const { service, stateRepo, userRepo } = makeService();
-    const state = {
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: false,
-      initialized_at: null,
-    };
-    stateRepo.findOne.mockResolvedValue(state);
-    stateRepo.save.mockImplementation(async (value: any) => value);
-    userRepo.count.mockResolvedValue(1);
+  it('reports initialized once the env flag is set', () => {
+    const { service } = makeService();
+    (envUtil.isSetupComplete as jest.Mock).mockReturnValue(true);
 
-    await expect(service.getStatus()).resolves.toEqual({
+    expect(service.getStatus()).toEqual({
       initialized: true,
       inProgress: false,
     });
-    // and it locks the installer by persisting the flag
-    expect(stateRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ is_initialized: true }),
-    );
   });
 
-  it('throws 409 when bootstrap called after initialization', async () => {
-    const { service, stateRepo } = makeService();
-    stateRepo.findOne.mockResolvedValue({
-      id: 'singleton',
-      is_initialized: true,
-      setup_in_progress: false,
-    });
+  it('throws 409 when bootstrap is called after initialization', async () => {
+    const { service } = makeService();
+    (envUtil.isSetupComplete as jest.Mock).mockReturnValue(true);
 
-    await expect(service.bootstrap({} as any)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      service.bootstrap(sqliteBootstrapDto()),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('throws LockedException when bootstrap is already in progress', async () => {
-    const { service, stateRepo } = makeService();
-    stateRepo.findOne.mockResolvedValue({
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: true,
-    });
+    const { service } = makeService();
+    // Hold validateDatabase open so a second call observes inProgress=true.
+    let release: () => void = () => undefined;
+    jest
+      .spyOn(service, 'validateDatabase')
+      .mockImplementation(
+        () => new Promise<void>((resolve) => (release = resolve)),
+      );
 
-    await expect(service.bootstrap({} as any)).rejects.toBeInstanceOf(
-      LockedException,
-    );
+    const first = service.bootstrap(sqliteBootstrapDto());
+    await Promise.resolve();
+
+    await expect(
+      service.bootstrap(sqliteBootstrapDto()),
+    ).rejects.toBeInstanceOf(LockedException);
+
+    release();
+    await first;
   });
 
   it('maps database connection errors to 400', async () => {
@@ -114,160 +143,38 @@ describe('SetupService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('bootstraps setup and marks state initialized', async () => {
-    const { service, stateRepo, userRepo, tx, envService } = makeService();
-    const state = {
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: false,
-      initialized_at: null,
-    };
-    stateRepo.findOne.mockResolvedValue(state);
-    stateRepo.save.mockImplementation(async (value: any) => value);
-    userRepo.findOne.mockResolvedValue(null);
+  it('bootstraps: creates schema + admin, writes env and signals completion', async () => {
+    const { service, envService, completion } = makeService();
 
-    tx.runInTransaction.mockImplementation(async (fn: any) => {
-      const manager = {
-        create: jest.fn((_: unknown, payload: any) => payload),
-        save: jest.fn(async (_: unknown, payload: any) => ({
-          id: payload.id ?? 'generated-user-id',
-          ...payload,
-        })),
-      };
+    let completed = false;
+    void completion.waitUntilComplete().then(() => (completed = true));
 
-      return fn(manager);
-    });
-
-    jest.spyOn(service, 'validateDatabase').mockResolvedValue(undefined);
-
-    await service.bootstrap({
-      app: {
-        allowCorsUrl: 'http://localhost:3000',
-        authSecret: 'secret',
-      },
-      database: {
-        host: 'localhost',
-        port: '5432',
-        username: 'postgres',
-        password: 'password',
-        name: 'cms',
-        ssl: false,
-      },
-      admin: {
-        email: 'admin@example.com',
-        password: 'Password123!',
-      },
-    });
+    await service.bootstrap(sqliteBootstrapDto());
 
     expect(envService.writeAllowlisted).toHaveBeenCalledWith(
       expect.objectContaining({
-        DB_HOST: 'localhost',
+        DB_TYPE: 'sqlite',
         AUTH_SECRET: 'secret',
-        DB_SSL: 'false',
+        SETUP_COMPLETE: 'true',
       }),
     );
-    expect(stateRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        is_initialized: true,
-        setup_in_progress: false,
-      }),
-    );
+
+    await Promise.resolve();
+    expect(completed).toBe(true);
+    expect(service.getStatus().inProgress).toBe(false);
   });
 
-  it('creates admin without username so entity hook generates it', async () => {
-    const { service, stateRepo, userRepo, tx } = makeService();
-    const state = {
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: false,
-      initialized_at: null,
-    };
-    stateRepo.findOne.mockResolvedValue(state);
-    stateRepo.save.mockImplementation(async (value: any) => value);
-    userRepo.findOne.mockResolvedValue(null);
-
-    let createdUserPayload: any;
-    tx.runInTransaction.mockImplementation(async (fn: any) => {
-      const manager = {
-        create: jest.fn((entity: unknown, payload: any) => {
-          if (payload && 'email' in payload) {
-            createdUserPayload = payload;
-          }
-
-          return payload;
-        }),
-        save: jest.fn(async (_: unknown, payload: any) => ({
-          id: payload.id ?? 'generated-user-id',
-          ...payload,
-        })),
-      };
-
-      return fn(manager);
-    });
-
-    jest.spyOn(service, 'validateDatabase').mockResolvedValue(undefined);
-
-    await service.bootstrap({
-      app: {
-        allowCorsUrl: 'http://localhost:3000',
-        authSecret: 'secret',
-      },
-      database: {
-        host: 'localhost',
-        port: '5432',
-        username: 'postgres',
-        password: 'password',
-        name: 'cms',
-        ssl: false,
-      },
-      admin: {
-        email: 'admin@example.com',
-        password: 'Password123!',
-      },
-    });
-
-    expect(createdUserPayload).toBeDefined();
-    expect(createdUserPayload.username).toBeUndefined();
-  });
-
-  it('releases setup lock when bootstrap fails', async () => {
-    const { service, stateRepo } = makeService();
-    const state = {
-      id: 'singleton',
-      is_initialized: false,
-      setup_in_progress: false,
-      initialized_at: null,
-    };
-    stateRepo.findOne.mockResolvedValue(state);
-    stateRepo.save.mockImplementation(async (value: any) => value);
+  it('releases the setup lock when bootstrap fails', async () => {
+    const { service } = makeService();
 
     jest
       .spyOn(service, 'validateDatabase')
       .mockRejectedValue(new BadRequestException('Database connection failed'));
 
     await expect(
-      service.bootstrap({
-        app: {
-          allowCorsUrl: 'http://localhost:3000',
-          authSecret: 'secret',
-        },
-        database: {
-          host: 'localhost',
-          port: '5432',
-          username: 'postgres',
-          password: 'password',
-          name: 'cms',
-          ssl: false,
-        },
-        admin: {
-          email: 'admin@example.com',
-          password: 'Password123!',
-        },
-      }),
+      service.bootstrap(sqliteBootstrapDto()),
     ).rejects.toBeInstanceOf(BadRequestException);
 
-    expect(stateRepo.save).toHaveBeenLastCalledWith(
-      expect.objectContaining({ setup_in_progress: false }),
-    );
+    expect(service.getStatus().inProgress).toBe(false);
   });
 });

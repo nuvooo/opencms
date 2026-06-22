@@ -16,10 +16,20 @@ export class PluginRegistryService implements OnModuleInit {
   private enabledStates = new Map<string, boolean>();
 
   /**
-   * Plugins that must never be disabled, so an admin can always recover:
-   * the plugin manager itself and the dashboard.
+   * Core features the CMS cannot run without. They can never be disabled so an
+   * admin can always recover and the content layer stays functional. Optional
+   * core features (e.g. multi-tenancy) are intentionally excluded so they
+   * remain toggleable.
    */
-  private static readonly PROTECTED = new Set(['plugins', 'dashboard']);
+  private static readonly PROTECTED = new Set([
+    'plugins',
+    'dashboard',
+    'entries',
+    'locales',
+    'media',
+    'content-types',
+    'api-tokens',
+  ]);
 
   constructor(
     private readonly loader: PluginLoaderService,
@@ -40,10 +50,21 @@ export class PluginRegistryService implements OnModuleInit {
   rescan(): PluginDescriptor[] {
     const loaded = this.loader.loadAll();
     this.plugins = new Map(
-      loaded.map((plugin) => [
-        plugin.id,
-        { ...plugin, enabled: this.enabledStates.get(plugin.id) ?? true },
-      ]),
+      loaded.map((plugin) => {
+        const isProtected = this.isProtected(plugin.id);
+        return [
+          plugin.id,
+          {
+            ...plugin,
+            // Protected plugins are always enabled, even if a stale persisted
+            // state says otherwise.
+            enabled: isProtected
+              ? true
+              : (this.enabledStates.get(plugin.id) ?? true),
+            protected: isProtected,
+          },
+        ];
+      }),
     );
     return this.getAll();
   }

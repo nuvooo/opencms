@@ -12,6 +12,7 @@ export const SETUP_ENV_ALLOWLIST = [
   'DB_NAME',
   'DB_DATABASE',
   'DB_SSL',
+  'SETUP_COMPLETE',
 ] as const;
 
 export type SetupEnvKey = (typeof SETUP_ENV_ALLOWLIST)[number];

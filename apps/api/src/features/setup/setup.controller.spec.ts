@@ -18,12 +18,12 @@ describe('SetupController', () => {
     return { controller, setupService };
   };
 
-  it('returns setup status', async () => {
+  it('returns setup status', () => {
     const { controller, setupService } = makeController();
     const response = { initialized: false, inProgress: false };
-    setupService.getStatus.mockResolvedValue(response);
+    setupService.getStatus.mockReturnValue(response);
 
-    await expect(controller.status()).resolves.toEqual(response);
+    expect(controller.status()).toEqual(response);
   });
 
   it('validates database connection', async () => {
