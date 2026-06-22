@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm build` runs `nest build` (API) and `next build` (web), both of
+      # which type-check, so this doubles as the typecheck gate.
+      - name: Build (typecheck)
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      # NOTE: `pnpm lint` is intentionally not gated yet. The web lint script
+      # uses `next lint --max-warnings 0` and the repo currently has pre-existing
+      # `no-img-element` warnings. Re-add a `pnpm lint` step once those are
+      # resolved.
