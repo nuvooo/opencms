@@ -1,0 +1,9 @@
+/*
+ * Reuse the shared shadcn/Tailwind v4 theme from @repo/shadcn. It already does
+ * `@import 'tailwindcss'` and `@source './ui'`, so the design system carries
+ * over from the Next.js app unchanged. `@source` below points Tailwind at this
+ * app's own source so its utility classes are generated too.
+ */
+@import '@repo/shadcn/shadcn.css';
+
+@source '../';

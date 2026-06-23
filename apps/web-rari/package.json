@@ -1,0 +1,34 @@
+{
+  "name": "web-rari",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Experimental OpenCMS admin frontend on the rari (RSC + Rust) runtime. Parallel port of apps/web; the Next.js app remains the production frontend.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "rari dev",
+    "build": "rari build",
+    "start": "rari start",
+    "clean": "rari clean",
+    "typecheck": "tsgo"
+  },
+  "dependencies": {
+    "@repo/shadcn": "workspace:*",
+    "lucide-react": "^0.511.0",
+    "rari": "^0.14.12",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^3.25.75"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.1",
+    "@types/node": "^22.16.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "^7.0.0-dev.20260619.1",
+    "tailwindcss": "^4.3.1",
+    "vite": "^8.0.16"
+  }
+}

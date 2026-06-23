@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+bin
+.cache
+.rari
+*.tsbuildinfo
+.env
+.env.local
