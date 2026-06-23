@@ -1,4 +1,4 @@
-import { Toaster } from '@repo/shadcn/sonner';
+import { Toaster } from '@/components/ui/toaster';
 import type { LayoutProps, Metadata } from 'rari';
 
 export default function RootLayout({ children }: LayoutProps) {

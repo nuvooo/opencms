@@ -19,6 +19,17 @@ const MarketplaceResponseSchema = z.object({
   data: z.array(MarketplaceEntrySchema),
 });
 
+/** Client-callable plugin list (reads the session cookie for auth). */
+export async function listPlugins(): Promise<PluginDescriptor[]> {
+  const session = await getSession();
+  const [error, data] = await safeFetch(PluginsResponseSchema, '/plugins', {
+    cache: 'no-store',
+    headers: authHeaders(session),
+  });
+  if (error) throw new Error(error);
+  return data.data;
+}
+
 /** Client-callable refresh of the marketplace catalog. */
 export async function listMarketplace(): Promise<MarketplaceEntry[]> {
   const session = await getSession();

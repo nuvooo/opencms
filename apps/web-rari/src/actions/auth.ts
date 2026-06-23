@@ -55,6 +55,15 @@ export async function signIn(
   return { ok: true };
 }
 
+/**
+ * Returns the current session user, or null. Used by client components to gate
+ * routes (server components cannot read request cookies in rari 0.14.12).
+ */
+export async function getSessionUser() {
+  const session = await getSession();
+  return session?.user ?? null;
+}
+
 /** Signs out: best-effort API revocation, then clears the session cookie. */
 export async function signOut(): Promise<void> {
   const session = await getSession();

@@ -17,22 +17,38 @@ app keeps working while the port matures.
 
 ## What maps to what
 
-| Concern         | Next.js (`apps/web`)                | rari (`apps/web-rari`)                                                                 |
-| --------------- | ----------------------------------- | -------------------------------------------------------------------------------------- |
-| Routing         | `app/` App Router                   | `src/app/` (same conventions)                                                          |
-| Middleware      | `middleware.ts`                     | `src/proxy.ts` (`RariResponse`)                                                        |
-| Auth            | NextAuth (Credentials, JWT session) | cookie session via `rari/headers` `cookies()` + server actions (`src/actions/auth.ts`) |
-| Server data     | server components / server actions  | same                                                                                   |
-| Cookies/session | `next-auth` encrypted JWT           | httpOnly `cms-session` cookie (`src/lib/session.ts`)                                   |
-| API client      | `lib/safeFetch.ts`                  | `src/lib/api.ts`                                                                       |
-| UI              | `@repo/shadcn`                      | `@repo/shadcn` (unchanged)                                                             |
-| Navigation      | `next/link`, `usePathname`          | `<a>` + `usePathname` from `rari/router`                                               |
+| Concern         | Next.js (`apps/web`)                | rari (`apps/web-rari`)                                                      |
+| --------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| Routing         | `app/` App Router                   | `src/app/` (same conventions)                                               |
+| Auth gate       | `middleware.ts`                     | client `AdminShell` via the `getSessionUser` server action (see note below) |
+| Auth            | NextAuth (Credentials, JWT session) | sign-in/out server actions hitting the Nest API (`src/actions/auth.ts`)     |
+| Cookies/session | `next-auth` encrypted JWT           | httpOnly, base64url `cms-session` cookie (`src/lib/session.ts`)             |
+| Server data     | server components / server actions  | **server actions only** (see note) — `src/actions/*`                        |
+| API client      | `lib/safeFetch.ts`                  | `src/lib/api.ts`                                                            |
+| UI              | `@repo/shadcn`                      | `@repo/shadcn` (unchanged)                                                  |
+| Navigation      | `next/link`, `usePathname`          | `<a>` + `usePathname` from `rari/router`                                    |
 
-## Implemented so far
+### Important rari 0.14.12 constraint
+
+rari only populates **request cookies for server actions**, not for plain
+server components (verified in the runtime: `with_cookies` is called on the
+action path only). Two consequences this port is built around:
+
+- **Authenticated data is fetched via server actions** (`src/actions/*`) that
+  read the session cookie and attach the bearer token — not in server
+  components. Pages render thin client components that call those actions on
+  mount.
+- **Route gating is client-side** in `AdminShell` (it calls `getSessionUser`
+  and redirects if unauthenticated). The real protection is the API, which
+  rejects requests without a valid token. `src/proxy.ts` is kept for when rari
+  wires up proxy execution, but is currently inert.
+
+## Implemented so far (builds and runs: `rari build` + `rari start` verified)
 
 - App config (Vite + `rari/vite`, Tailwind v4 via `@repo/shadcn`).
-- Cookie-based auth: sign-in/sign-out server actions against the Nest API,
-  httpOnly session, route gating in `proxy.ts`.
+- Cookie-based auth: sign-in/out server actions against the Nest API, httpOnly
+  base64url session, client-side route gate. The cookie round-trip
+  (`getSessionUser` reading the session in an action) is verified end-to-end.
 - Admin shell: registry-driven sidebar (nav derived from enabled plugins).
 - Pages: **sign-in**, **dashboard**, **plugins** (toggle/rescan),
   **marketplace** (install), **SEO** (settings).

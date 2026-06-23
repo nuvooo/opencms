@@ -7,21 +7,16 @@ import { Badge } from '@repo/shadcn/badge';
 import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { toast } from '@repo/shadcn/sonner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-interface Props {
-  initial: MarketplaceEntry[];
-  loadError: string | null;
-}
-
-export default function MarketplaceManager({ initial, loadError }: Props) {
-  const [entries, setEntries] = useState<MarketplaceEntry[]>(initial);
-  const [error, setError] = useState<string | null>(loadError);
-  const [refreshing, setRefreshing] = useState(false);
+export default function MarketplaceManager() {
+  const [entries, setEntries] = useState<MarketplaceEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
 
-  const refresh = async () => {
-    setRefreshing(true);
+  const refresh = async (initial = false) => {
+    if (!initial) setLoading(true);
     try {
       setEntries(await listMarketplace());
       setError(null);
@@ -29,11 +24,15 @@ export default function MarketplaceManager({ initial, loadError }: Props) {
       const message =
         err instanceof Error ? err.message : 'Failed to load marketplace';
       setError(message);
-      toast.error(message);
+      if (!initial) toast.error(message);
     } finally {
-      setRefreshing(false);
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    refresh(true);
+  }, []);
 
   const handleInstall = async (entry: MarketplaceEntry) => {
     setInstallingId(entry.id);
@@ -61,8 +60,8 @@ export default function MarketplaceManager({ initial, loadError }: Props) {
         </p>
       </div>
 
-      <Button variant="outline" onClick={refresh} disabled={refreshing}>
-        {refreshing ? 'Refreshing...' : 'Refresh'}
+      <Button variant="outline" onClick={() => refresh()} disabled={loading}>
+        {loading ? 'Refreshing...' : 'Refresh'}
       </Button>
 
       {error && (
@@ -71,7 +70,11 @@ export default function MarketplaceManager({ initial, loadError }: Props) {
         </div>
       )}
 
-      {entries.length === 0 ? (
+      {loading ? (
+        <div className="rounded-lg border p-8 text-center text-muted-foreground">
+          Loading...
+        </div>
+      ) : entries.length === 0 ? (
         <div className="rounded-lg border p-6 text-sm text-muted-foreground">
           No plugins available in the marketplace.
         </div>

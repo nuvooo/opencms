@@ -1,6 +1,6 @@
 'use client';
 
-import { rescanPlugins, togglePlugin } from '@/actions/plugins';
+import { listPlugins, rescanPlugins, togglePlugin } from '@/actions/plugins';
 import { getIcon } from '@/lib/icons';
 import type { PluginDescriptor } from '@/lib/plugins';
 import { Badge } from '@repo/shadcn/badge';
@@ -8,18 +8,26 @@ import { Button } from '@repo/shadcn/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/shadcn/card';
 import { toast } from '@repo/shadcn/sonner';
 import { Switch } from '@repo/shadcn/switch';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-interface Props {
-  initial: PluginDescriptor[];
-  loadError: string | null;
-}
-
-export default function PluginsManager({ initial, loadError }: Props) {
-  const [plugins, setPlugins] = useState<PluginDescriptor[]>(initial);
-  const [error, setError] = useState<string | null>(loadError);
+export default function PluginsManager() {
+  const [plugins, setPlugins] = useState<PluginDescriptor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [rescanning, setRescanning] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    listPlugins()
+      .then((data) => {
+        setPlugins(data);
+        setError(null);
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : 'Failed to load plugins'),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleToggle = async (id: string, enabled: boolean) => {
     setTogglingId(id);
@@ -93,7 +101,11 @@ export default function PluginsManager({ initial, loadError }: Props) {
         </p>
       </div>
 
-      <Button variant="outline" onClick={handleRescan} disabled={rescanning}>
+      <Button
+        variant="outline"
+        onClick={handleRescan}
+        disabled={rescanning || loading}
+      >
         {rescanning ? 'Rescanning...' : 'Rescan Plugins'}
       </Button>
 
@@ -103,25 +115,33 @@ export default function PluginsManager({ initial, loadError }: Props) {
         </div>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">System Plugins</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {system.map((p) => renderCard(p, 'System'))}
+      {loading ? (
+        <div className="rounded-lg border p-8 text-center text-muted-foreground">
+          Loading...
         </div>
-      </section>
+      ) : (
+        <>
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">System Plugins</h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {system.map((p) => renderCard(p, 'System'))}
+            </div>
+          </section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold">Installed Plugins</h2>
-        {user.length === 0 ? (
-          <div className="rounded-lg border p-6 text-sm text-muted-foreground">
-            No installed plugins yet.
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {user.map((p) => renderCard(p, 'Installed'))}
-          </div>
-        )}
-      </section>
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">Installed Plugins</h2>
+            {user.length === 0 ? (
+              <div className="rounded-lg border p-6 text-sm text-muted-foreground">
+                No installed plugins yet.
+              </div>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {user.map((p) => renderCard(p, 'Installed'))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }
