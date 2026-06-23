@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { PluginFilesService } from './plugin-files.service';
@@ -68,9 +69,33 @@ export class PluginMarketplaceService {
       );
     }
 
-    const archive = await this.download(entry.downloadUrl);
+    const downloadLocation = this.resolveDownloadLocation(
+      this.catalogUrl,
+      entry.downloadUrl,
+    );
+    const archive = await this.download(downloadLocation);
     this.files.installFromBuffer(archive);
     return this.registry.rescan();
+  }
+
+  /**
+   * Resolves a catalog entry's `downloadUrl` against the catalog's own location
+   * so packages can be referenced relatively (e.g. `dist/seo-1.0.0.zip`). This
+   * keeps the catalog independent of the branch or host it is served from, and
+   * makes local `file:` checkouts work without rewriting URLs. Absolute
+   * `http(s):`/`file:`/filesystem targets are returned unchanged.
+   */
+  private resolveDownloadLocation(
+    catalogLocation: string,
+    downloadUrl: string,
+  ): string {
+    if (/^(https?:|file:)/.test(downloadUrl) || isAbsolute(downloadUrl)) {
+      return downloadUrl;
+    }
+    if (/^(https?:|file:)/.test(catalogLocation)) {
+      return new URL(downloadUrl, catalogLocation).toString();
+    }
+    return join(dirname(catalogLocation), downloadUrl);
   }
 
   private async fetchCatalog(): Promise<

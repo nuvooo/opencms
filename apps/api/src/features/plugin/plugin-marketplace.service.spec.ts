@@ -89,6 +89,21 @@ describe('PluginMarketplaceService', () => {
     expect(result).toEqual([{ id: 'seo' }]);
   });
 
+  it('resolves a relative downloadUrl against the catalog location', async () => {
+    // zipPath lives next to catalogPath, so the relative "seo.zip" must resolve
+    // back to it.
+    writeCatalog('seo.zip');
+    const installFromBuffer = jest.fn().mockReturnValue('seo');
+    const rescan = jest.fn().mockReturnValue([{ id: 'seo' }]);
+    const service = new PluginMarketplaceService(
+      { rescan } as any,
+      { installFromBuffer } as any,
+    );
+
+    await service.install('seo');
+    expect(installFromBuffer).toHaveBeenCalledWith(Buffer.from('zip-bytes'));
+  });
+
   it('rejects an unknown plugin id', async () => {
     writeCatalog(zipPath);
     const service = new PluginMarketplaceService(
