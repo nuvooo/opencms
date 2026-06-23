@@ -6,6 +6,7 @@ import { ROLES_KEY } from '@/common/decorators';
 import { MemoryStorageFile } from '@blazity/nest-file-fastify';
 import { Test } from '@nestjs/testing';
 import { PluginFilesService } from './plugin-files.service';
+import { PluginMarketplaceService } from './plugin-marketplace.service';
 import { PluginRegistryService } from './plugin-registry.service';
 import { PluginController } from './plugin.controller';
 
@@ -28,6 +29,10 @@ describe('PluginController', () => {
             installFromZip: jest.fn(),
             uninstall: jest.fn(),
           },
+        },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace: jest.fn(), install: jest.fn() },
         },
       ],
     }).compile();
@@ -59,6 +64,10 @@ describe('PluginController', () => {
             uninstall: jest.fn(),
           },
         },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace: jest.fn(), install: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -89,6 +98,10 @@ describe('PluginController', () => {
             installFromZip,
             uninstall: jest.fn(),
           },
+        },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace: jest.fn(), install: jest.fn() },
         },
       ],
     }).compile();
@@ -126,6 +139,10 @@ describe('PluginController', () => {
             uninstall,
           },
         },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace: jest.fn(), install: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -138,6 +155,56 @@ describe('PluginController', () => {
     expect(assertRemovable).toHaveBeenCalledWith('seo-tools');
     expect(uninstall).toHaveBeenCalledWith('seo-tools');
     expect(rescan).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists marketplace entries', async () => {
+    const getMarketplace = jest
+      .fn()
+      .mockResolvedValue([{ id: 'seo', installed: false }]);
+
+    const module = await Test.createTestingModule({
+      controllers: [PluginController],
+      providers: [
+        { provide: PluginRegistryService, useValue: {} },
+        { provide: PluginFilesService, useValue: {} },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace, install: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    const controller = module.get(PluginController);
+    await expect(controller.marketplaceList()).resolves.toEqual({
+      message: 'Marketplace fetched successfully',
+      data: [{ id: 'seo', installed: false }],
+    });
+    expect(getMarketplace).toHaveBeenCalledTimes(1);
+  });
+
+  it('installs a marketplace plugin by id', async () => {
+    const install = jest.fn().mockResolvedValue([{ id: 'seo' }]);
+
+    const module = await Test.createTestingModule({
+      controllers: [PluginController],
+      providers: [
+        { provide: PluginRegistryService, useValue: {} },
+        { provide: PluginFilesService, useValue: {} },
+        {
+          provide: PluginMarketplaceService,
+          useValue: { getMarketplace: jest.fn(), install },
+        },
+      ],
+    }).compile();
+
+    const controller = module.get(PluginController);
+    await expect(controller.marketplaceInstall({ id: 'seo' })).resolves.toEqual(
+      {
+        message: 'Plugin seo installed successfully',
+        data: [{ id: 'seo' }],
+      },
+    );
+    expect(install).toHaveBeenCalledWith('seo');
   });
 
   it('requires admin role for plugin lifecycle mutations only', () => {

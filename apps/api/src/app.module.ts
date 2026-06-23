@@ -11,6 +11,7 @@ import { EntriesModule } from '@/entries/entries.module';
 import { FileModule } from '@/features/file/file.module';
 import { MediaModule } from '@/features/media/media.module';
 import { PluginModule } from '@/features/plugin/plugin.module';
+import { SeoModule } from '@/features/seo/seo.module';
 import { SetupModule } from '@/features/setup/setup.module';
 import { UsersModule } from '@/features/users/users.module';
 import { LocaleModule } from '@/locale/locale.module';
@@ -81,6 +82,7 @@ import { TenantsModule } from './tenants/tenants.module';
     TenantsModule,
     MediaModule,
     PluginModule,
+    SeoModule,
     SetupModule,
   ],
 })
