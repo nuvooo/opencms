@@ -12,8 +12,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { InstallMarketplacePluginDto } from './dto/install-marketplace-plugin.dto';
 import { UpdatePluginDto } from './dto/update-plugin.dto';
 import { PluginFilesService } from './plugin-files.service';
+import { PluginMarketplaceService } from './plugin-marketplace.service';
 import { PluginRegistryService } from './plugin-registry.service';
 
 @ApiTags('plugins')
@@ -23,12 +25,30 @@ export class PluginController {
   constructor(
     private readonly pluginRegistry: PluginRegistryService,
     private readonly pluginFiles: PluginFilesService,
+    private readonly marketplace: PluginMarketplaceService,
   ) {}
 
   @Get()
   findAll() {
     const plugins = this.pluginRegistry.getAll();
     return { message: 'Plugins fetched successfully', data: plugins };
+  }
+
+  @Get('marketplace')
+  @Roles('ADMIN')
+  async marketplaceList() {
+    const data = await this.marketplace.getMarketplace();
+    return { message: 'Marketplace fetched successfully', data };
+  }
+
+  @Post('marketplace/install')
+  @Roles('ADMIN')
+  async marketplaceInstall(@Body() dto: InstallMarketplacePluginDto) {
+    const plugins = await this.marketplace.install(dto.id);
+    return {
+      message: `Plugin ${dto.id} installed successfully`,
+      data: plugins,
+    };
   }
 
   @Post('install')

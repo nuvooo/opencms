@@ -5,8 +5,10 @@ import { safeFetch } from '@/lib/safeFetch';
 import { z } from 'zod';
 import { authHeaders } from './auth-headers';
 import {
+  GetMarketplaceSchema,
   GetPluginsSchema,
   PluginDescriptorSchema,
+  type MarketplaceEntry,
   type PluginDescriptor,
 } from './plugin.schema';
 
@@ -35,6 +37,37 @@ export const installPlugin = async (
       method: 'POST',
       body: formData,
       headers: authHeaders(session),
+    },
+  );
+  if (error) throw new Error(error);
+  return data.data;
+};
+
+export const getMarketplace = async (): Promise<MarketplaceEntry[]> => {
+  const session = await auth();
+  const [error, data] = await safeFetch(
+    GetMarketplaceSchema,
+    '/plugins/marketplace',
+    {
+      cache: 'no-store',
+      headers: authHeaders(session),
+    },
+  );
+  if (error) throw new Error(error);
+  return data.data;
+};
+
+export const installFromMarketplace = async (
+  id: string,
+): Promise<PluginDescriptor[]> => {
+  const session = await auth();
+  const [error, data] = await safeFetch(
+    PluginsResponseSchema,
+    '/plugins/marketplace/install',
+    {
+      method: 'POST',
+      headers: authHeaders(session, { json: true }),
+      body: JSON.stringify({ id }),
     },
   );
   if (error) throw new Error(error);

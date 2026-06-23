@@ -25,5 +25,23 @@ export const GetPluginsSchema = z.object({
   data: z.array(PluginDescriptorSchema),
 });
 
+export const MarketplaceEntrySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  version: z.string(),
+  icon: z.string(),
+  author: z.string().optional(),
+  homepage: z.string().optional(),
+  downloadUrl: z.string(),
+  installed: z.boolean(),
+  installedVersion: z.string().nullable(),
+});
+
+export const GetMarketplaceSchema = z.object({
+  data: z.array(MarketplaceEntrySchema),
+});
+
 export type PluginDescriptor = z.infer<typeof PluginDescriptorSchema>;
 export type PluginNavItem = z.infer<typeof PluginNavItemSchema>;
+export type MarketplaceEntry = z.infer<typeof MarketplaceEntrySchema>;

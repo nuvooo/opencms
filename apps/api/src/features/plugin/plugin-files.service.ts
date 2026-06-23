@@ -38,7 +38,20 @@ export class PluginFilesService {
       throw new BadRequestException('Invalid plugin package: file is empty');
     }
 
-    const zip = new AdmZip(file.buffer);
+    return this.installFromBuffer(file.buffer);
+  }
+
+  /**
+   * Installs a plugin from a raw zip buffer. Shared by the upload-based
+   * installer ({@link installFromZip}) and the marketplace, which downloads the
+   * package over HTTP before handing the bytes here.
+   */
+  installFromBuffer(buffer: Buffer): string {
+    if (!buffer?.length) {
+      throw new BadRequestException('Invalid plugin package: file is empty');
+    }
+
+    const zip = new AdmZip(buffer);
     const manifestEntry = zip
       .getEntries()
       .find((entry) =>

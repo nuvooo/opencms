@@ -9,6 +9,11 @@
       "path": "/admin/plugins",
       "label": "Plugins",
       "icon": "Puzzle"
+    },
+    {
+      "path": "/admin/marketplace",
+      "label": "Marketplace",
+      "icon": "Store"
     }
   ]
 }

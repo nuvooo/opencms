@@ -6,6 +6,8 @@ import {
   KeyRound,
   LayoutDashboard,
   Puzzle,
+  Search,
+  Store,
 } from '@repo/shadcn/lucide';
 import { ReactElement } from 'react';
 
@@ -17,6 +19,8 @@ const iconMap: Record<string, ReactElement> = {
   Building2: <Building2 className="size-4 shrink-0" />,
   Puzzle: <Puzzle className="size-4 shrink-0" />,
   KeyRound: <KeyRound className="size-4 shrink-0" />,
+  Search: <Search className="size-4 shrink-0" />,
+  Store: <Store className="size-4 shrink-0" />,
 };
 
 export const getIcon = (name: string): ReactElement =>

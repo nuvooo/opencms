@@ -182,6 +182,38 @@ to (see steps 2–3 above) if they are not already in the app.
 
 Click **Delete** on an installed plugin. Core plugins cannot be deleted.
 
+## Marketplace (install over the network)
+
+Beyond manual ZIP uploads, OpenCMS can install plugins straight from a remote
+registry via **Admin → Marketplace**.
+
+- The registry is a `catalog.json` index listing available plugins and a
+  `downloadUrl` for each package. The official registry lives in the
+  [`nuvooo/opencms-plugins`](https://github.com/nuvooo/opencms-plugins)
+  repository.
+- The catalog location is configured with the `PLUGIN_MARKETPLACE_URL`
+  environment variable. It accepts `http(s):` and `file:` URLs (the latter is
+  handy for local development against a checkout). It defaults to the published
+  registry's raw `catalog.json`.
+- `GET /api/plugins/marketplace` returns the catalog decorated with each
+  plugin's local install state; `POST /api/plugins/marketplace/install`
+  (`{ id }`) downloads the package and installs it through the same code path as
+  a ZIP upload, then rescans.
+
+`PluginMarketplaceService`
+(`apps/api/src/features/plugin/plugin-marketplace.service.ts`) fetches the
+catalog and hands the downloaded bytes to
+`PluginFilesService.installFromBuffer()`.
+
+### Feature plugins vs. metadata plugins
+
+A marketplace package contains a `manifest.json` (and docs/assets). The feature
+code it unlocks ships **with** OpenCMS and stays gated behind
+`@RequiresPlugin('<id>')` until the plugin is installed and enabled. The
+first-party **SEO** plugin works this way: installing it from the marketplace
+flips on the `/api/seo/*` routes (`sitemap.xml`, `robots.txt`, settings) and the
+**Admin → SEO** page, which otherwise return `403`.
+
 ## Protected core plugins
 
 Some core features are **protected**: they can never be disabled and are always reported as enabled, so an admin
@@ -208,10 +240,12 @@ You cannot mark a user plugin as protected via its manifest; protection is defin
 
 All routes are under `/api/plugins` and require an admin session (except as configured):
 
-| Method & path               | Description                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| `GET /api/plugins`          | List all plugins with their state.                                                  |
-| `PATCH /api/plugins/:id`    | Enable/disable a plugin (`{ enabled }`). Protected plugins reject disable with 403. |
-| `POST /api/plugins/install` | Install from an uploaded ZIP.                                                       |
-| `POST /api/plugins/rescan`  | Re-scan the plugin directories.                                                     |
-| `DELETE /api/plugins/:id`   | Uninstall a user plugin (core plugins rejected).                                    |
+| Method & path                           | Description                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `GET /api/plugins`                      | List all plugins with their state.                                                  |
+| `PATCH /api/plugins/:id`                | Enable/disable a plugin (`{ enabled }`). Protected plugins reject disable with 403. |
+| `POST /api/plugins/install`             | Install from an uploaded ZIP.                                                       |
+| `POST /api/plugins/rescan`              | Re-scan the plugin directories.                                                     |
+| `DELETE /api/plugins/:id`               | Uninstall a user plugin (core plugins rejected).                                    |
+| `GET /api/plugins/marketplace`          | List the remote catalog with local install state.                                   |
+| `POST /api/plugins/marketplace/install` | Download and install a catalog plugin (`{ id }`).                                   |
